@@ -6,9 +6,9 @@ Update Chrome OS on regular PCs
  <summary>Index</summary>
  
 - [Guide](./guide)
- - [Background](./background)
- - [How to use](./how-to-use)
- - [How to revert back if something goes wrong](./how-to-revert-back-if-something-goes-wrong)
+ * [Background](./background)
+ * [How to use](./how-to-use)
+ * [How to revert back if something goes wrong](./how-to-revert-back-if-something-goes-wrong)
 - [References](./references)
 </details>
 

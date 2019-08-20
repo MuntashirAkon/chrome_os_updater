@@ -5,6 +5,11 @@ Update Chrome OS on regular PCs
 <details>
  <summary>Index</summary>
  
+- [Guide](./guide)
+ - [Background](./background)
+ - [How to use](./how-to-use)
+ - [How to revert back if something goes wrong](./how-to-revert-back-if-something-goes-wrong)
+- [References](./references)
 </details>
 
 ## Guide
@@ -58,7 +63,4 @@ There's always a chance that something will go wrog. In this case, don't panic, 
 - This should restore Chrome OS to the previous version
 
 ## References
-1. https://github.com/imperador/chromefy
-2. https://docs.google.com/document/d/1uBU4IObDI8IFhSjeCMvKw46O4vKCnfeZTGF7Jx8Brno/edit
-3. https://wiki.debian.org/fstab
-4. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
+1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format

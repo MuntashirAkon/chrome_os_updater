@@ -9,6 +9,21 @@ if [ $UID -ne 0 ]; then
   exit 1
 fi
 
+# Global variables
+code_name=
+recovery="/tmp/recovery.conf"
+
+# Echo to stderr
+function echo_stderr {
+  >&2 echo "$@"
+}
+
+# Print Usage
+function print_usage {
+  echo_stderr "Usage: cros_update.sh [--check-only]"
+  echo_stderr "Run cros_update.sh without any argument to update Chrome OS"
+  echo_stderr "--check-only  Only check for update."
+}
 
 # Get installed version info
 # Output: <code name> <milestone> <platform version> <cros version>
@@ -58,63 +73,72 @@ function get_env {
   echo "${matched}"
 }
 
+# Check if there's an update
+# $1: Code Name
+# $2: Milestone
+# $3: Platform version
+# $4: Cros version
+function check_for_update {
+  echo_stderr "Checking for update..."
+  curl -sL "https://dl.google.com/dl/edgedl/chromeos/recovery/recovery.conf" -o "${recovery}" 2> /dev/null
+  if [ $? -ne 0 ] && ! [ -f "$recovery" ]; then
+    echo_stderr "No internet connection! Try again."
+    exit 1
+  fi
+
+  code_name=`echo "$1" | awk '{ print toupper($0) }'`
+  local ins_plarform=$3
+  local rem_platform=`get_env "${recovery}" "${code_name}" 'version'`
+
+  if [ "${ins_plarform}" = "${rem_platform}" ]; then
+    echo_stderr "No update available."
+    exit 0
+  else # Update available
+    echo_stderr "Update available (Chrome OS ${rem_platform})."
+    return 0
+  fi
+}
 
 # Check if there's an update, download it if available.
 # $1: Code Name
 # $2: Milestone
 # $3: Platform version
 # $4: Cros version
-# Output: recovery file location
+# Output: recovery file location or empty
 function download_update {
-  local code_name=`echo "$1" | awk '{ print toupper($0) }'`
-  local recovery="/tmp/recovery.conf"
-  
-  curl -sL "https://dl.google.com/dl/edgedl/chromeos/recovery/recovery.conf" -o "${recovery}" 2> /dev/null
-  if [ $? -ne 0 ] && ! [ -f "$recovery" ]; then
-    >&2 echo "No internet connection! Try again."
-    exit 1
-  fi
-  
+  check_for_update "$@"
 
-  local ins_plarform=$3
-  local rem_platform=`get_env "${recovery}" "${code_name}" 'version'`
-  local md5sum=`get_env "${recovery}" "${code_name}" 'md5'`
+  #local md5sum=`get_env "${recovery}" "${code_name}" 'md5'`
   local file_size=`get_env "${recovery}" "${code_name}" 'zipfilesize'`
   local file_name=`get_env "${recovery}" "${code_name}" 'file'`
   local file_url=`get_env "${recovery}" "${code_name}" 'url'`
   file_size=`bc -l <<< "scale=2; ${file_size}/1073741824"`
 
-  if [ "${ins_plarform}" = "${rem_platform}" ]; then
-    >&2 echo "No update available."
-    exit 0
-  else # Update available
-    >&2 echo "Update available (Chrome OS ${rem_platform})."
-    >&2 echo "Downloading ${file_name} (${file_size} GB)..."
-    # TODO: take ${root} as input
-    local user=`logname 2> /dev/null`
-    if [ "$user" == "" ]; then
-      user="chronos"
-    fi
-    local root="/home/${user}"
-    local file_loc_zip="${root}/${file_name}.zip"
-    local file_loc="${root}/${file_name}"
-    if ! [ -f "${file_loc}" ]; then
-      curl -\#L -o "${file_loc_zip}" "${file_url}" 2> /dev/null
-      # TODO: match checksum
-      if [ $? -ne 0 ]; then
-        >&2 echo "Failed downloading the update. Try again."
-        exit 1
-      fi
-      unzip -d "${root}" "${file_loc_zip}"
-      if [ $? -ne 0 ]; then
-        >&2 echo "Failed extracting the update. Try again."
-        exit 1
-      fi
-      rm ${file_loc_zip}
-    fi
-    echo "${file_loc}"
-    return 0
+  echo_stderr "Downloading ${file_name} (${file_size} GB)..."
+  # TODO: take ${root} as input
+  local user=`logname 2> /dev/null`
+  if [ "$user" == "" ]; then
+    user="chronos"
   fi
+  local root="/home/${user}"
+  local file_loc_zip="${root}/${file_name}.zip"
+  local file_loc="${root}/${file_name}"
+  if ! [ -f "${file_loc}" ]; then
+    curl -\#L -o "${file_loc_zip}" "${file_url}" 2> /dev/null
+    # TODO: match checksum
+    if [ $? -ne 0 ]; then
+      echo_stderr "Failed downloading the update. Try again."
+      exit 1
+    fi
+    unzip -d "${root}" "${file_loc_zip}"
+    if [ $? -ne 0 ]; then
+      echo_stderr "Failed extracting the update. Try again."
+      exit 1
+    fi
+    rm ${file_loc_zip}
+  fi
+  echo "${file_loc}"
+  return 0
 }
 
 
@@ -122,15 +146,15 @@ function download_update {
 # $1: swtpm.tar location
 function download_swtpm {
     local swtpm_tar=$1
-    >&2 echo -n "Downloading swtpm.tar..."
+    echo_stderr -n "Downloading swtpm.tar..."
     if ! [ -f "${swtpm_tar}" ]; then
       curl -\#L -o "${swtpm_tar}" "https://github.com/imperador/chromefy/raw/master/swtpm.tar" 2> /dev/null
       if [ $? -ne 0 ]; then
-        >&2 echo -e "\nFailed downloading the swtpm.tar. Try again."
+        echo_stderr -e "\nFailed downloading the swtpm.tar. Try again."
         exit 1
       fi
     fi
-    >&2 echo "Done." 
+    echo_stderr "Done."
     return 0
 }
 
@@ -151,10 +175,11 @@ function cleanupIfAlreadyExists {
 
 
 function main {
-    >&2 echo "Chrome OS Updater"
-    >&2 echo "-----------------"
-    >&2 echo
-    >&2 echo "Reading cros_update.conf..."
+    if [ "$1" == "--check-only" ]; then
+      check_for_update $(get_installed)
+      exit 0
+    fi
+    echo_stderr "Reading cros_update.conf..."
     local conf_path="/usr/local/cros_update.conf"
     # Create cros_update.conf if not exists
     touch "${conf_path}"
@@ -172,8 +197,8 @@ function main {
     local efi_uuid=${EFI}
 
     # Validate conf
-    if [ "${root_a_uuid}" = "" ] || [ "${root_b_uuid}" = "" ]; then
-      >&2 echo "Invalid configuration, mandatory items missing."
+    if [ "${root_a_uuid}" = "" ] || [ "${root_b_uuid}" = "" ] || [ "${efi_uuid}" = "" ]; then
+      echo_stderr "Invalid configuration, mandatory items missing."
       exit 1
     fi
 
@@ -204,7 +229,6 @@ function main {
 
 
     # Check for update & download them
-    >&2 echo "Checking for update..."
     local installed_data=`get_installed`
     local recovery_img=`download_update ${installed_data}`
     if [ $? -ne 0 ] || [ "$recovery_img" == "" ]; then
@@ -217,7 +241,7 @@ function main {
     fi
 
     # Update
-    >&2 echo -n "Updating Chrome OS..."
+    echo_stderr -n "Updating Chrome OS..."
     local hdd_root="${root}/t_root_a" # Target root
     local img_root_a="${root}/i_root_a" # Img root
     local swtpm="${root}/swtpm"
@@ -246,10 +270,10 @@ function main {
     cp -a "/etc/chrome_dev.conf" "${hdd_root}/etc"
     cp -a "/etc/init/mount-internals.conf" "${hdd_root}/etc/init" 2> /dev/null
     sed '0,/enforcing/s/enforcing/permissive/' -i "${hdd_root}/etc/selinux/config"
-    >&2 echo "Done."
+    echo_stderr "Done."
     # Apply TPM fix
     if [ "${tpm_fix}" = true ]; then
-      >&2 echo -n "Fixing TPM..."
+      echo_stderr -n "Fixing TPM..."
       # Extract swtpm.tar
       tar -xf "${swtpm_tar}" -C "${root}"
       # Copy necessary files
@@ -274,11 +298,11 @@ function main {
         swtpm_ioctl --tcp :10001 -i
     end script
 EOL
-      >&2 echo "Done."
+      echo_stderr "Done."
     fi
 
     # Update Grub
-    >&2 echo -n "Updating GRUB..."
+    echo_stderr -n "Updating GRUB..."
     local efi_dir="${root}/efi"
     cleanupIfAlreadyExists "${efi_part}" "${efi_dir}"
     mount -o rw "${efi_part}" "${efi_dir}"
@@ -286,14 +310,14 @@ EOL
     local old_uuid=`cat "${efi_dir}/efi/boot/grub.cfg" | grep -m 1 "PARTUUID=" | awk '{print $15}' | cut -d'=' -f3`
     sed -i "s/${old_uuid}/${hdd_uuid}/" "${efi_dir}/efi/boot/grub.cfg"
     if [ $? -eq 0 ]; then
-      >&2 echo "Done."
+      echo_stderr "Done."
     else
-      >&2 echo
-      >&2 echo "Failed fixing GRUB, please try fixing it manually."
-      # exit 1
+      echo_stderr
+      echo_stderr "Failed fixing GRUB, please try fixing it manually."
+      exit 1
     fi
     
-    >&2 echo -n "Updating partition data..."
+    echo_stderr -n "Updating partition data..."
     local hdd_root_part_no=`echo ${t_root} | sed 's/^[^0-9]\+\([0-9]\+\)$/\1/'`
     local write_gpt_path="${hdd_root}/usr/sbin/write_gpt.sh"
     # Remove unnecessary partitions & update properties
@@ -303,12 +327,30 @@ EOL
      | tee "${write_gpt_path}" > /dev/null
     # -e "w ${write_gpt_path}" # doesn't work on CrOS
     if [ $? -eq 0 ]; then
-      >&2 echo "Done."
+      echo_stderr "Done."
     else
-      >&2 echo
-      >&2 echo "Failed updating partition data, please try fixing it manually."
-      # exit 1
+      echo_stderr
+      echo_stderr "Failed updating partition data, please try fixing it manually."
+      exit 1
     fi
+
+    # Unmount and cleanup
+    umount "${hdd_root}" 2> /dev/null
+    if [ $? -eq 0 ]; then
+      rm -rf "${hdd_root}"
+    fi
+    umount "${img_root_a}" 2> /dev/null
+    if [ $? -eq 0 ]; then
+      rm -rf "${img_root_a}"
+    fi
+    umount "${efi_dir}" 2> /dev/null
+    if [ $? -eq 0 ]; then
+      rm -rf "${efi_dir}"
+    fi
+    /sbin/losetup -d "${img_disk}" 2> /dev/null
+    rm "${swtpm_tar}" "${recovery_img}" 2> /dev/null
+    rm -rf "${swtpm}" 2> /dev/null
+    echo_stderr "Update complete. You can now reboot safely."
 }
 
 main "$@"

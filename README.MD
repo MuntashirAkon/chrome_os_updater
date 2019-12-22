@@ -20,7 +20,7 @@ Update Chrome OS on regular PCs
 
 Chrome OS has two root partitions namely **ROOT-A** and **ROOT-B** (partition no. 3 and 5 respectively). **ROOT-A** partition is actually the partition you're booting from (on regular installation) and **ROOT-B** partition is only used when you update your Chromebook from *About Chrome OS* page. It applies the update to **ROOT-B** and later the update is applied to **ROOT-A**, and finally, you boot from **ROOT-A** partition. I followed the similar yet somewhat modified approach to develop the `cros_update.sh` script which can be used to update regular PCs to the latest version of Chrome OS.
 
-The update is of two types: **delta update** and **full update** (similar to Android updates). Delta update is only available for devices which are updated from a previous (but not very old) version of Chrome OS as it contains only the changes (delta, in science, always seem to denote change). Full update constains the whole update and can be used by Chrome OS of any version. Sadly, unlike Android updates, these sort of updates can only be applied by the Chromebook users as the Chrome OS installed on regular PCs are highly modified. The only way (that I'm currently of) is using the recovery files to update regular PCs to the latest version of Chrome OS.
+The update is of two types: **delta update** and **full update** (similar to Android updates). Delta update is only available for devices which are updated from a previous (but not very old) version of Chrome OS as it contains only the changes (delta, in science, always seem to denote change). Full update constains the whole update and can be used by Chrome OS of any version. Sadly, unlike Android updates, these sort of updates can only be applied by the Chromebook users as the Chrome OS installed on regular PCs are highly modified. The only way (that I'm currently aware of) is using the recovery files to update regular PCs to the latest version of Chrome OS.
 
 Previously on a separate project, I've described how to update Chrome OS from another Linux distro, which was slightly easier to develop and use. However, installing a Linux distro or even using Ubuntu Live can be very annoying only for the purpose of updating Chrome OS. That's why I've been working on this project for some time now. The benefit of this project is you can update Chrome OS directly from Chrome OS itself (without needing another Linux distro).
 
@@ -46,7 +46,9 @@ After that you can simply run: (condering that you'll be saving `cros_update.sh`
 ```
 sudo bash ~/Downloads/cros_update.sh
 ```
-to update your Chrome OS. The script will download the necessary file automatically.
+to update your Chrome OS. The script will download the necessary files automatically.
+
+NOTE: Be sure to boot in (U)EFI mode as the efi partition will not boot in legacy mode.
 
 ### How to revert back if something goes wrong
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # 2019 (c) Muntashir Al-Islam. All rights reserved.
-# This file is converted from the original omaha_request_action.cc
+# This file is converted from the original omaha_response_handler_action.cc
 # located at https://chromium.googlesource.com/chromiumos/platform/update_engine/+/refs/heads/master/omaha_response_handler_action.cc
 # fetched at 30 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
@@ -40,12 +40,12 @@ function GetPartitionFromUUID {
     local label=$2  # Not empty
     local part=
     if [ "$uuid" == "" ]; then
-      >&2 echo "Empty UUID for ${label}, default will be used."
+      echo_stderr "Empty UUID for ${label}, default will be used."
       part=$(FindPartitionByLabel "${label}")
     else
       part=`/sbin/blkid --uuid "${uuid}"`
       if [ "${part}" == "" ]; then
-        >&2 echo "Given UUID for ${label} not found, default will be used."
+        echo_stderr "Given UUID for ${label} not found, default will be used."
         part=$(FindPartitionByLabel "${label}")
       fi
     fi
@@ -59,12 +59,12 @@ function GetPartitionFromUUID {
 function OmahaResponseHandlerAction_PerformAction {
     OmahaRequestAction_TransferComplete  # Make the request, probably need to move somewhere else
     if ! [ ${ORA_update_exists} ]; then
-      >&2 echo "There are no updates. Aborting."
+      echo_stderr "There are no updates. Aborting."
       exit 1
     fi
-    # The whole download_update should go here, but how? using install_plan
     # PayloadState::GetCurrentURL is not necessary right now.
     # We're only going to use the first item
+    # Backup HTTPS url should always supply, but just in case
     install_plan['download_url']="${ORA_payload_urls[1]}"
     install_plan['version']="${ORA_version}"
     install_plan['system_version']=  # TODO
@@ -99,7 +99,7 @@ function OmahaResponseHandlerAction_PerformAction {
     elif [ "${current_slot}" == "${root_b}" ]; then
       install_plan['target_slot']=${root_a}
     else
-      >&2 echo "No valid target partition is found. Update aborted."
+      echo_stderr "No valid target partition is found. Update aborted."
       exit 1
     fi
     install_plan['efi_slot']=$(GetPartitionFromUUID "${EFI}" 'EFI-SYSTEM')
@@ -111,5 +111,7 @@ function OmahaResponseHandlerAction_PerformAction {
 
 
 # Check environment variables
-#OmahaResponseHandlerAction_PerformAction
-#( set -o posix ; set )
+if [ "${0##*/}" == "omaha_response_handler_action.sh" ]; then
+    OmahaResponseHandlerAction_PerformAction
+    ( set -o posix ; set )
+fi

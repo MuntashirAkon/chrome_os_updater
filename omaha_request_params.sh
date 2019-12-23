@@ -4,6 +4,10 @@
 # located at https://chromium.googlesource.com/chromiumos/platform/update_engine/+/refs/heads/master/omaha_request_params.cc
 # fetched at 28 Jun 2019
 # The only modification is the use $CUSTOM_RELEASE_TRACK
+# Echo to stderr
+function echo_stderr {
+  >&2 echo "$@"
+}
 
 # Load environment variables from lsb-release
 lsb_release='/etc/lsb-release'

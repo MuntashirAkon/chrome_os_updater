@@ -111,7 +111,7 @@ ORA_disable_payload_backoff=
 function OmahaRequestAction_PerformAction {
     curl -sL -X POST --data "$(GetRequestXml)" "${update_url_}" -o "${response}"
     if [ $? -ne 0 ]; then
-      >&2 echo "Omaha request network transfer failed."
+      echo_stderr "Omaha request network transfer failed."
       exit 1
     fi
 }
@@ -123,12 +123,12 @@ function OmahaRequestAction_PerformAction {
 function OmahaRequestAction_ParseStatus {
     local status=`/usr/bin/xmllint --xpath 'string(//updatecheck/@status)' "${response}"`
     if [ "${status}" == "noupdate" ]; then
-      >&2 echo "No update available."
+      echo_stderr echo "No update available."
       ORA_update_exists=false
       exit 1
     fi
     if [ "${status}" != "ok" ]; then
-      >&2 echo "Unknown Omaha response status: ${status}"
+      echo_stderr "Unknown Omaha response status: ${status}"
       exit 1
     fi
 }
@@ -141,14 +141,14 @@ function OmahaRequestAction_ParseUrls {
     local kUpdateUrlNodeXPath='/response/app/updatecheck/urls/url'
     /usr/bin/xmllint --xpath "${kUpdateUrlNodeXPath}" "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "XPath missing ${kUpdateUrlNodeXPath}"
+      echo_stderr "XPath missing ${kUpdateUrlNodeXPath}"
       exit 1
     fi
     local c_urls=`/usr/bin/xmllint --xpath "count(${kUpdateUrlNodeXPath})" "${response}" 2> /dev/null`
     for (( i=1; i<=c_urls; i++ )); do
       local url=`/usr/bin/xmllint --xpath "string(${kUpdateUrlNodeXPath}[${i}]/@codebase)" "${response}" 2> /dev/null`
       if [ "${url}" == "" ]; then
-        >&2 echo "Omaha Response URL has empty codebase"
+        echo_stderr "Omaha Response URL has empty codebase"
         exit 1
       fi
       ORA_payload_urls+=("${url}")
@@ -163,12 +163,12 @@ function OmahaRequestAction_ParsePackage {
     local kPackageNodeXPath='/response/app/updatecheck/manifest/packages/package'
     /usr/bin/xmllint --xpath "${kPackageNodeXPath}" "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "XPath missing ${kPackageNodeXPath}"
+      echo_stderr "XPath missing ${kPackageNodeXPath}"
       exit 1
     fi
     ORA_package_name=`/usr/bin/xmllint --xpath "string(${kPackageNodeXPath}[1]/@name)" "${response}" 2> /dev/null`
     if [ "${ORA_package_name}" == "" ]; then
-      >&2 echo "Omaha Response has empty package name"
+      echo_stderr "Omaha Response has empty package name"
       exit 1
     fi
     # Append package name
@@ -189,17 +189,17 @@ function OmahaRequestAction_ParseParams {
     local kActionNodeXPath='/response/app/updatecheck/manifest/actions/action'
     /usr/bin/xmllint --xpath "${kManifestNodeXPath}" "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "XPath missing ${kManifestNodeXPath}"
+      echo_stderr "XPath missing ${kManifestNodeXPath}"
       exit 1
     fi
     ORA_version=`/usr/bin/xmllint --xpath "string(${kManifestNodeXPath}/@${kTagVersion})" "${response}" 2> /dev/null`
     if [ "${ORA_version}" == "" ]; then
-      >&2 echo "Omaha Response does not have version in manifest!"
+      echo_stderr "Omaha Response does not have version in manifest!"
       exit 1
     fi
     /usr/bin/xmllint --xpath "${kActionNodeXPath}" "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "XPath missing ${kActionNodeXPath}"
+      echo_stderr "XPath missing ${kActionNodeXPath}"
       exit 1
     fi
     local c_action=`/usr/bin/xmllint --xpath "count(${kActionNodeXPath})" "${response}" 2> /dev/null`
@@ -212,12 +212,12 @@ function OmahaRequestAction_ParseParams {
       fi
     done
     if [ ${postinstall_index} -le 0 ]; then
-      >&2 echo "Omaha Response has no postinstall event action"
+      echo_stderr "Omaha Response has no postinstall event action"
       exit 1
     fi
     ORA_hash=`/usr/bin/xmllint --xpath "string(${kActionNodeXPath}[${postinstall_index}]/@${kTagSha256})" "${response}" 2> /dev/null`
     if [ "${ORA_hash}" == "" ]; then
-      >&2 echo "Omaha Response has empty sha256 value"
+      echo_stderr "Omaha Response has empty sha256 value"
       exit 1
     fi
     # TODO: Get the optional properties one by one.
@@ -231,7 +231,7 @@ function OmahaRequestAction_ParseParams {
 function OmahaRequestAction_ParseResponse {
     /usr/bin/xmllint --xpath '/response/app/updatecheck' "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "XPath missing UpdateCheck NodeSet"
+      echo_stderr "XPath missing UpdateCheck NodeSet"
       exit 1
     fi
     # Date time and other not needed things are not included
@@ -258,7 +258,7 @@ function OmahaRequestAction_TransferComplete {
     OmahaRequestAction_PerformAction  # Get update response, not part of the original method
     /usr/bin/xmllint "${response}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      >&2 echo "Omaha response not valid XML"
+      echo_stderr "Omaha response not valid XML"
       exit 1
     fi
     # Don't need to check stupid ping values!

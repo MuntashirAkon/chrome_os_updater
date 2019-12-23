@@ -90,6 +90,7 @@ function OmahaResponseHandlerAction_PerformAction {
     source "${kCrosUpdateConf}"
     # Set the values of the slot, if not found find them
     # Again, we don't need is_install since install won't be supported
+    # FIXME: Should be part of BootControl
     local root_a=$(GetPartitionFromUUID "${ROOTA}" 'ROOT-A')
     local root_b=$(GetPartitionFromUUID "${ROOTB}" 'ROOT-B')
     local current_slot=$(GetCurrentSlot)

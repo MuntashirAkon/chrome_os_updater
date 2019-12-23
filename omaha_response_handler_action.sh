@@ -10,9 +10,9 @@
 kDeadlineFile="/tmp/update-check-response-deadline"
 kCrosUpdateConf="/usr/local/cros_update.conf" # Our conf file
 # cros_update.conf format:
-# ROOTA='<ROOT-A UUID>'
-# ROOTB='<ROOT-B UUID>'
-# EFI='<EFI-SYSTEM UUID>'
+# ROOTA='<ROOT-A UUID, lowercase>'
+# ROOTB='<ROOT-B UUID, lowercase>'
+# EFI='<EFI-SYSTEM UUID, lowercase>'
 # TPM=true/false (default: true)
 
 
@@ -84,6 +84,7 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['target_slot']=  # For our case, it's actually the target partition
     install_plan['source_slot']=  # For our case, it's actually the source partition
     install_plan['efi_slot']=  # Not included in the original install_plan, but required for us
+    install_plan['tpm']="true"  # TPM is true by default
     # Create cros_update.conf if not exists
     touch "${kCrosUpdateConf}"
     # Use the conf
@@ -104,10 +105,25 @@ function OmahaResponseHandlerAction_PerformAction {
       exit 1
     fi
     install_plan['efi_slot']=$(GetPartitionFromUUID "${EFI}" 'EFI-SYSTEM')
-    
+    if [ "${TPM}" == "false" ]; then
+      install_plan['tpm']="false"
+    fi
     install_plan['is_rollback']=true  # No functionality
     install_plan['powerwash_required']=false  # No functionality
     # No need for deadline since we're installing right away
+    # Custom paths
+    install_plan['download_root']='/usr/local/update'  # Download root
+    install_plan['update_file_path']=  # Update file path/location
+    install_plan['tpm_url']="https://github.com/imperador/chromefy/raw/master/swtpm.tar"
+    install_plan['target_partition']=  # Target partition path
+    # Create root if not exists
+    if ! [ -d "${install_plan['download_root']}" ]; then
+      mkdir "${install_plan['download_root']}" 2> /dev/null
+      if ! [ $? -eq 0 ]; then
+        echo_stderr "Could not create download directory. Update aborted."
+        exit 1
+      fi
+    fi
 }
 
 

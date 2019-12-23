@@ -2,7 +2,7 @@
 
 Update Chrome OS on regular PCs
 
-*Download releases from the [release](https://github.com/MuntashirAkon/chrome_os_updater) section. Don't download the repository as it may be unstable and endup breaking Chrome OS.*
+*Download releases from the [release](https://github.com/MuntashirAkon/chrome_os_updater) section. **DON'T** download the repository as it may be unstable and endup breaking Chrome OS. Use the associated README file for instructions.*
 
 <details>
  <summary>Index</summary>
@@ -18,13 +18,13 @@ Update Chrome OS on regular PCs
 
 ### Background
 
-Chrome OS has two root partitions namely **ROOT-A** and **ROOT-B** (partition no. 3 and 5 respectively). **ROOT-A** partition is actually the partition you're booting from (on regular installation) and **ROOT-B** partition is only used when you update your Chromebook from *About Chrome OS* page. It applies the update to **ROOT-B** and later the update is applied to **ROOT-A**, and finally, you boot from **ROOT-A** partition. I followed the similar yet somewhat modified approach to develop the `cros_update.sh` script which can be used to update regular PCs to the latest version of Chrome OS.
+Chrome OS has two root partitions namely **ROOT-A** and **ROOT-B** (partition number 3 and 5 respectively). **ROOT-A** partition is actually the partition you're booting from (on regular installation) and **ROOT-B** partition is only used when you update your Chromebook from *About Chrome OS* page. When you're updating for the first time, the update is installed at **ROOT-B** partition. So, until you install another update, this partition is the one you boot from. And when another update is installed, it is installed at **ROOT-A**, and again, you boot from **ROOT-A** partition (you get the idea). This is also know as A/B update. I followed the similar yet somewhat modified approach to develop `omaha_cros_update.sh` script which can be used to update regular PCs to the latest version of Chrome OS.
 
-The update is of two types: **delta update** and **full update** (similar to Android updates). Delta update is only available for devices which are updated from a previous (but not very old) version of Chrome OS as it contains only the changes (delta, in science, always seem to denote change). Full update constains the whole update and can be used by Chrome OS of any version. Sadly, unlike Android updates, these sort of updates can only be applied by the Chromebook users as the Chrome OS installed on regular PCs are highly modified. The only way (that I'm currently aware of) is using the recovery files to update regular PCs to the latest version of Chrome OS.
+There are two types of updates: **delta update** and **full update** (similar to Android updates). Delta update is only available for devices which are updated from a (not-very-old) previous version of Chrome OS as it contains only the changes (delta, in science, always seem to denote change). Full update contains the whole update and can be used by Chrome OS of any version. For some obvious reasons, currently only the full updates can be applied through this script.
 
-Previously on a separate project, I've described how to update Chrome OS from another Linux distro, which was slightly easier to develop and use. However, installing a Linux distro or even using Ubuntu Live can be very annoying only for the purpose of updating Chrome OS. That's why I've been working on this project for some time now. The benefit of this project is you can update Chrome OS directly from Chrome OS itself (without needing another Linux distro).
+Previously on a separate project, I've described how to update Chrome OS from another Linux distro, which was slightly easier to develop than use since installing a Linux distro or even using Ubuntu Live can be very annoying only for the purpose of updating Chrome OS. That's why I've been working on this project for some time now. The benefit of this project is you can update Chrome OS directly from Chrome OS itself (without needing another Linux distro). Moreover, this method of updating Chrome OS is very similar to the native process, thus, the security of your OS (though UEFI itself is a culprit) will be much better provided you're only using Chrome OS (ie. without dual or multibooting).
 
-However, it requires another partition namely **ROOT-B**. In a regular installation, the partition is already there, but if you're multibooting with other OSes, you'll need to create another partition (with `EXT2` partition type and 5 GB size) namely **ROOT-B**. After you apply update from **ROOT-A**, **ROOT-B** will be used as the root partition and vice versa (notice that this doesn't follow the Chrome OS' original convention). The benefit of using this approach is that, if for some reason, update doesn't work as expected, you can still be able to use Chrome OS by simply changing the partition UUID in the GRUB configuration file.
+Consequently, it requires another partition namely **ROOT-B**. In a regular installation, the partition is already there (remember to increase size of both **ROOT-A** and **ROOT-B** to at least 5 GB), but if you're multibooting with other OSes following my previous instructions, you'll need to create another partition (with `EXT2` partition type and 5 GB size) namely **ROOT-B**. After you apply update from **ROOT-A**, **ROOT-B** will be used as the root partition and vice versa. The benefit of using this approach is that, if for some reason, update doesn't work as expected, you can still be able to use Chrome OS by simply changing the partition UUID in the GRUB configuration file.
 
 ### How to use
 
@@ -52,7 +52,7 @@ NOTE: Be sure to boot in (U)EFI mode as the efi partition will not boot in legac
 
 ### How to revert back if something goes wrong
 
-There's always a chance that something will go wrog. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps bellow.
+There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps bellow.
 
 - Find the disk id of **ROOT-A** and **ROOT-B** partitions
 - Now find the partition UUID of the partitions, like this (search online for appropriate command if you're using Windows or macOS)

@@ -4,13 +4,20 @@
 # located at https://chromium.googlesource.com/chromiumos/platform/update_engine/+/refs/heads/master/omaha_request_params.cc
 # fetched at 28 Jun 2019
 # The only modification is the use $CUSTOM_RELEASE_TRACK
+
+#
 # Echo to stderr
+#
 function echo_stderr {
   >&2 echo "$@"
 }
 
 # Load environment variables from lsb-release
 lsb_release='/etc/lsb-release'
+if ! [ -f "${lsb_release}" ]; then
+    echo_stderr "No ${lsb_release} found! You must run this script inside Chrome OS!"
+    exit 1
+fi
 CHROMEOS_AUSERVER=`grep 'CHROMEOS_AUSERVER' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
 CHROMEOS_BOARD_APPID=`grep 'CHROMEOS_BOARD_APPID' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
 CHROMEOS_CANARY_APPID=`grep 'CHROMEOS_CANARY_APPID' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`

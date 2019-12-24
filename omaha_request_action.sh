@@ -5,7 +5,7 @@
 # fetched at 28 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-. omaha_request_params.sh
+. "$SCRIPT_DIR/omaha_request_params.sh"
 
 # List of custom pair tags that we interpret in the Omaha Response:
 kTagDeadline="deadline"
@@ -123,7 +123,7 @@ function OmahaRequestAction_PerformAction {
 function OmahaRequestAction_ParseStatus {
     local status=`/usr/bin/xmllint --xpath 'string(//updatecheck/@status)' "${response}"`
     if [ "${status}" == "noupdate" ]; then
-      echo_stderr echo "No update available."
+      echo_stderr "No update available."
       ORA_update_exists=false
       exit 1
     fi

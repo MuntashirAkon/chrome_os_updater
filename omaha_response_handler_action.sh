@@ -5,7 +5,10 @@
 # fetched at 30 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-. omaha_request_action.sh
+# Get script directory 
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+. "$SCRIPT_DIR/omaha_request_action.sh"
 
 kDeadlineFile="/tmp/update-check-response-deadline"
 kCrosUpdateConf="/usr/local/cros_update.conf" # Our conf file
@@ -112,18 +115,10 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['powerwash_required']=false  # No functionality
     # No need for deadline since we're installing right away
     # Custom paths
-    install_plan['download_root']='/usr/local/update'  # Download root
+    install_plan['download_root']='/usr/local/updater'  # Download root
     install_plan['update_file_path']=  # Update file path/location
     install_plan['tpm_url']="https://github.com/imperador/chromefy/raw/master/swtpm.tar"
     install_plan['target_partition']=  # Target partition path
-    # Create root if not exists
-    if ! [ -d "${install_plan['download_root']}" ]; then
-      mkdir "${install_plan['download_root']}" 2> /dev/null
-      if ! [ $? -eq 0 ]; then
-        echo_stderr "Could not create download directory. Update aborted."
-        exit 1
-      fi
-    fi
 }
 
 

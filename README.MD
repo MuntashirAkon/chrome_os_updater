@@ -64,21 +64,21 @@ sudo mkdir /usr/local/updater
 sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
 ```
 
-Optionally, you can also create a symbolic link for faster access:
+Optionally, you can also create a symbolic link for quicker access:
 ```sh
-sudo ln -s /usr/local/updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
+sudo ln -s /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
 ```
 
 #### Usage
 
 **Check for updates**
 ```sh
-bash /usr/local/updater/omaha_cros_update.sh --check-only
+bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh --check-only
 ```
 
 **Update Chrome OS**
 ```sh
-bash /usr/local/updater/omaha_cros_update.sh
+bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh
 ```
 
 Required files will be downloaded automatically. An active Internet connection is required.

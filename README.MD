@@ -9,7 +9,7 @@ Update Chrome OS on regular PCs
  
 - [Guide](#guide)
   * [Background](#background)
-  * [How to use](#how-to-use)
+  * [Installation and Usage](#installation-and-usage)
   * [How to revert back if something goes wrong](#how-to-revert-back-if-something-goes-wrong)
 - [References](#references)
 </details>
@@ -26,9 +26,13 @@ Previously on a separate project, I've described how to update Chrome OS from an
 
 Consequently, it requires another partition namely **ROOT-B**. In a regular installation, the partition is already there (remember to increase size of both **ROOT-A** and **ROOT-B** to at least 5 GB), but if you're multibooting with other OSes following my previous instructions, you'll need to create another partition (with `EXT2` partition type and 5 GB size) namely **ROOT-B**. After you apply update from **ROOT-A**, **ROOT-B** will be used as the root partition and vice versa. The benefit of using this approach is that, if for some reason, update doesn't work as expected, you can still be able to use Chrome OS by simply changing the partition UUID in the GRUB configuration file.
 
-### How to use
+### Installation and Usage
 
-`cros_update.sh` requires a configuration file (namely `cros_update.conf`) to be located at `/usr/local` (full URI is `/usr/local/cros_update.conf`). This config file helps the script figuring out the partitions where update should take place. The format as follows:
+#### Requirements
+
+There is no requirment for the regular installation (ie. wiping the whole drive to install Chrome OS). But for the users who are multibooting alongside other OS or uses customized partitions, a configuration file is needed. The standard partition names (also known as labels) are **ROOT-A**, **ROOT-B** and **EFI-SYSTEM**. If (one or more of) the partition names of the HDD doesn't have the standard labels, you will also need this configuration file. *If the configuration file does not exist, the updater will fall back to the standard labels and will issue a warning.*
+
+The configuration format is as follows:
 ```sh
 ROOTA='<ROOT-A UUID, lowercase>'
 ROOTB='<ROOT-B UUID, lowercase>'
@@ -42,11 +46,42 @@ You can get UUID for a disk ID using the following command:
 ```
 *Note that **partition UUID** and **UUID** are not the same.*
 
-After that you can simply run: (condering that you'll be saving `cros_update.sh` at `~/Downloads` folder`)
+Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is `/usr/local/cros_update.conf`).
+
+#### Installation
+
+Download the latest release from the release section and extract the zip file. Typically, the extracted folder should be located at `~/Downloads` (ie. `~/Downloads/chrome_os_updater`). Now, you cannot run executables from this directory. So, you'll have to move it to some where you can run them. For our purpose, we will utlize `/usr/local`.
+
+Now open **Shell** by pressing `Ctrl` + `Alt` + `t`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
+
+**Create updater directory**
+```sh
+sudo mkdir /usr/local/updater
 ```
-sudo bash ~/Downloads/cros_update.sh
+
+**Copy updater script**
+```sh
+sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
 ```
-to update your Chrome OS. The script will download the necessary files automatically.
+
+Optionally, you can also create a symbolic link for faster access:
+```sh
+sudo ln -s /usr/local/updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
+```
+
+#### Usage
+
+**Check for updates**
+```sh
+bash /usr/local/updater/omaha_cros_update.sh --check-only
+```
+
+**Update Chrome OS**
+```sh
+bash /usr/local/updater/omaha_cros_update.sh
+```
+
+Required files will be downloaded automatically. An active Internet connection is required.
 
 NOTE: Be sure to boot in (U)EFI mode as the efi partition will not boot in legacy mode.
 
@@ -68,3 +103,5 @@ There's always a chance that something will go wrong. In this case, don't panic,
 
 ## References
 1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
+2. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
+3. https://source.android.com/devices/tech/ota/ab/

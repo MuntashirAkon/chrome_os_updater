@@ -52,7 +52,7 @@ Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is 
 
 Download the latest release from the release section and extract the zip file. Typically, the extracted folder should be located at `~/Downloads` (ie. `~/Downloads/chrome_os_updater`). Now, you cannot run executables from this directory. So, you'll have to move it to some where you can run them. For our purpose, we will utlize `/usr/local`.
 
-Now open **Shell** by pressing `Ctrl` + `Alt` + `t`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
+Now open crosh terminal by pressing `Ctrl` + `Alt` + `t`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
 
 **Create updater directory**
 ```sh
@@ -67,6 +67,10 @@ sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
 Optionally, you can also create a symbolic link for quicker access:
 ```sh
 sudo ln -s /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
+```
+and to make it executable:
+```sh
+sudo chmod +x /usr/local/bin/omaha_cros_update.sh
 ```
 
 #### Usage
@@ -83,7 +87,17 @@ bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh
 
 Required files will be downloaded automatically. An active Internet connection is required.
 
-NOTE: Be sure to boot in (U)EFI mode as the efi partition will not boot in legacy mode.
+**Switch update channel**
+
+It is possible to switch update channel (however, this is not tested by myself yet). To switch update channel, you need to export `CUSTOM_RELEASE_TRACK` environment variable in the crosh terminal before running the updater:
+```sh
+export CUSTOM_RELEASE_TRACK=dev-channel
+```
+`CUSTOM_RELEASE_TRACK` can take one of the following values:
+- dev-channel
+- canary-channel
+- beta-channel
+- stable-channel
 
 ### How to revert back if something goes wrong
 
@@ -105,3 +119,5 @@ There's always a chance that something will go wrong. In this case, don't panic,
 1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
 2. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
 3. https://source.android.com/devices/tech/ota/ab/
+4. https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48
+5. https://chromium.googlesource.com/chromiumos/third_party/grub2/+/refs/heads/master/grub-core/commands/gptpriority.c

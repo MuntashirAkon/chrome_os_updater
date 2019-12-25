@@ -1,5 +1,6 @@
 #!/bin/bash
 # 2019 (c) Muntashir Al-Islam. All rights reserved.
+# NOTE: TPM 1.2 fix is adapted from the Chromefy project and this copyright doesn't apply them.
 # This file is converted from the original postinstall_runner_action.cc
 # located at https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master/payload_consumer/postinstall_runner_action.cc
 # fetched at 23 December 2019
@@ -12,6 +13,68 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/delta_performer.sh"
 
 #
+# UpdateBootloaders, similar to update_x86_bootloaders.sh
+# located at https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/update_bootloaders.sh
+# Arguments:
+# $1: Writable root path (to modify /boot)
+# $2: EFI (mounted) path
+# $3: ROOT-A partition (e.g. /dev/sd%D%P)
+# $4: ROOT-B partition (e.g. /dev/sd%D%P)
+# $5: EFI-SYSTEM partition (e.g. /dev/sd%D%P)
+function UpdateBootloaders {
+    local root="$1"
+    local efi_path="$2"
+    local root_a_part="$3"
+    local root_b_part="$4"
+    local efi_part="$5"
+    # Sometimes, /boot and /boot/vmlinuz doesn't exist
+    if [ ! -f /boot/vmlinuz ]; then
+        >&2 echo "Warning: /boot or /boot/vmlinuz not found."
+    fi
+    # Although documented, check if $efi_path is actually a mount point
+    if ! mountpoint -q "$efi_path"; then
+        >&2 echo "$efi_path is not a mountpoint."
+        exit 1
+    fi
+    ### For EFI ###
+    # Get current (now old) values
+    # The content of grub.cfg should have the format as given in
+    # https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/build_library/create_legacy_bootloader_templates.sh
+    # If this format is not respected, this process will not work.
+    # NOTICE: The verified images are not supported when root is modified, therefore, they are ignored.
+    local grub_cfg_path="${root}/boot/efi/boot/grub.cfg"
+    local root_a_val=`grep -m 1 "root=" "${grub_cfg_path}" | sed -e 's/.*root=//'`
+    local root_b_val=`grep -m 2 "root=" "${grub_cfg_path}" | sed -e 's/.*root=//' | tail -1`
+    # Get root uuids
+    local root_a_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_a_part)"
+    local root_b_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_b_part)"
+    # Replace with the current values
+    sed -i "s/${root_a_val}/${root_a_uuid}/" "${grub_cfg_path}"
+    sed -i "s/${root_b_val}/${root_b_uuid}/" "${grub_cfg_path}"
+    ### For Syslinux ###
+    # Get current (now old) values
+    local syslinux_path="${root}/boot/syslinux"
+    local root_a_path="${syslinux_path}/root.A.cfg"
+    local root_b_path="${syslinux_path}/root.B.cfg"
+    root_a_val=`grep -m 1 "root=" "${root_a_path}" | sed -e 's/.*root=\(.*\)/\1/' | awk '{print $1}'`
+    root_b_val=`grep -m 1 "root=" "${root_b_path}" | sed -e 's/.*root=\(.*\)/\1/' | awk '{print $1}'`
+    # Replace with the current values
+    sed -i "s/${root_a_val}/${root_a_uuid}/" "${root_a_path}"
+    sed -i "s/${root_b_val}/${root_b_uuid}/" "${root_b_path}"
+    # Copy files into place
+    rm -rf "${efi_path}/efi/"
+    rm -rf "${efi_path}/syslinux/"
+    cp -a "${root}"/boot/{efi,syslinux} "${efi_path}"
+    # Copy the vmlinuz's into place for syslinux
+    sudo cp -f "${root}"/boot/vmlinuz "${efi_path}"/syslinux/vmlinuz.A
+    sudo cp -f "${root}"/boot/vmlinuz "${efi_path}"/syslinux/vmlinuz.B
+    # Install Syslinux loader
+    umount "${efi_path}"
+    sudo syslinux -d /syslinux "${efi_part}"
+    mount "${efi_part}" "${efi_path}"
+}
+
+#
 # PostinstallRunnerAction::Cleanup
 #
 function PostinstallRunnerAction_Cleanup {
@@ -22,30 +85,93 @@ function PostinstallRunnerAction_Cleanup {
 }
 
 #
+# ChangeBootOrder
+#
+function PostinstallRunnerAction_ChangeBootOrder {
+      # Change boot order
+      local old_default=`tac "${install_plan['grub_path']}" | grep -m 1 "set default" | awk '{print $2}' | cut -d'=' -f2`
+      local new_default="\$default${install_plan['target_slot_alphabet']}"  # For grub ($defaultA|$defaultB)
+      local sys_default="DEFAULT chromeos-hd.${install_plan['target_slot_alphabet']}"  # For syslinux
+      sed -i "s/${old_default}/${new_default}/" "${install_plan['target_partition']}/boot/efi/boot/grub.cfg" \
+      && sed -i "s/${old_default}/${new_default}/" "${install_plan['grub_path']}" \
+      && echo "${sys_default}" > "${install_plan['efi_partition']}/syslinux/default.cfg"
+      if [ $? -ne 0 ]; then
+        echo_stderr "Failed to update GRUB. Without it new update will not boot."
+        PostinstallRunnerAction_Cleanup
+        exit 1
+      fi
+}
+
+#
 # PostinstallRunnerAction::CompletePostinstall
 #
 function PostinstallRunnerAction_CompletePostinstall {
     install_plan['target_slot_no']=`echo ${install_plan['target_slot']} | sed 's/^[^0-9]\+\([0-9]\+\)$/\1/'`
     install_plan['write_gpt_path']="${install_plan['target_partition']}/usr/sbin/write_gpt.sh"
-    # Remove unnecessary partitions & update partition data
-    cat "${install_plan['write_gpt_path']}" | grep -vE "_(KERN_(A|B|C)|2|4|6|ROOT_(B|C)|5|7|OEM|8|RESERVED|9|10|RWFW|11)" | sed \
-    -e "s/^\(\s*PARTITION_NUM_ROOT_A=\)\"[0-9]\+\"$/\1\"${install_plan['target_slot_no']}\"/g" \
-    -e "s/^\(\s*PARTITION_NUM_3=\)\"[0-9]\+\"$/\1\"${install_plan['target_slot_no']}\"/g" \
-     | tee "${install_plan['write_gpt_path']}" > /dev/null
-    # -e "w ${install_plan['write_gpt_path']}" # doesn't work on CrOS
-    if [ $? -ne 0 ]; then
-      echo_stderr "Failed to update partition data. Update aborted."
-      PostinstallRunnerAction_Cleanup
-      exit 1
+    install_plan['grub_path']="${install_plan['efi_partition']}/efi/boot/grub.cfg"
+    local root_a="${install_plan['source_slot']}"
+    local root_b="${install_plan['target_slot']}"
+    if [ "${install_plan['target_slot_alphabet']}" == "A" ]; then
+      root_a="${install_plan['target_slot']}"
+      root_b="${install_plan['source_slot']}"
+    else
+      root_a="${install_plan['source_slot']}"
+      root_b="${install_plan['target_slot']}"
     fi
-    # Update grub FIXME: should be part of BootControl
-    local hdd_uuid=`/sbin/blkid -s PARTUUID -o value "${install_plan['target_slot']}"`
-    local old_uuid=`cat "${install_plan['efi_partition']}/efi/boot/grub.cfg" | grep -m 1 "PARTUUID=" | awk '{print $15}' | cut -d'=' -f3`
-    sed -i "s/${old_uuid}/${hdd_uuid}/" "${install_plan['efi_partition']}/efi/boot/grub.cfg"
-    if [ $? -ne 0 ]; then
-      echo_stderr "Failed to update GRUB. Without it new update will not boot."
-      PostinstallRunnerAction_Cleanup
-      exit 1
+    # Reset bootloaders (efi, syslinux)
+    UpdateBootloaders "${install_plan['target_partition']}" \
+                      "${install_plan['efi_partition']}" \
+                      "${root_a}" "${root_a}" \
+                      "${install_plan['efi_slot']}"
+    # Update partition data
+    # Just copy the previous write_gpt.sh, should go in the delta_performer.sh but kept here
+    # since related works are done here
+    rm "${install_plan['write_gpt_path']}"
+    cp /usr/sbin/write_gpt.sh "${install_plan['target_partition']}/usr/sbin/"
+    # There are three situations to deal with:
+    # 1. ROOT_B doesn't exist in write_gpt.sh (but physically exists, of course)
+    #    This is true for multibooted devices in general and in some special installations.
+    #    It needs partition number replacement for ROOT_A (part no. 3) and change of
+    #    boot order.
+    # 2. KERN_A and KERN_B don't exist (but ROOT_A and ROOT_B do exist) in write_gpt.sh
+    #    This is a special case and should only occurs due to some mistakes. It doesn't need
+    #    any partition number replacement, but need to change the boot order.
+    # 3. Otherwise ROOT_A, ROOT_B, KERN_A, KERN_B and possibly all other partitions exist
+    #    This is a typical case of a clean install. Some multibooted device may also have
+    #    ROOT_B, KERN_A and KERN_B (others are not checked/needed) which are also supported
+    if ! grep -qE "_(ROOT_B|5)" "${install_plan['write_gpt_path']}"; then  # Situation 1
+      # Replace ROOT_A partition number with the target partition number
+      cat "${install_plan['write_gpt_path']}" | sed \
+      -e "s/^\(\s*PARTITION_NUM_ROOT_A=\)\"[0-9]\+\"$/\1\"${install_plan['target_slot_no']}\"/g" \
+      -e "s/^\(\s*PARTITION_NUM_3=\)\"[0-9]\+\"$/\1\"${install_plan['target_slot_no']}\"/g" \
+      | tee "${install_plan['write_gpt_path']}" > /dev/null
+      if [ $? -ne 0 ]; then
+        echo_stderr "Failed to update partition data. Update aborted."
+        PostinstallRunnerAction_Cleanup
+        exit 1
+      fi
+      PostinstallRunnerAction_ChangeBootOrder
+    elif ! grep -qE "_(KERN_(A|B)|2|4)" "${install_plan['write_gpt_path']}"; then  # Situation 2
+      PostinstallRunnerAction_ChangeBootOrder
+    else  # Situation 3
+      . "${install_plan['write_gpt_path']}"
+      load_base_vars
+      local device=`rootdev -s -d 2>/dev/null`
+      # PARTITION_NUM_ROOT_A or PARTITION_NUM_ROOT_B
+      local part_num="PARTITION_NUM_ROOT_${install_plan['target_slot_alphabet']}" 
+      # Change boot priority
+      cgpt prioritize -P 4 $device \
+      && cgpt add -i ${!part_num} -P 5 -T 0 -S 1 $device  # Boot as successful device for now
+      if [ $? -ne 0 ]; then
+        # Probably not EFI, try syslinux
+        echo "DEFAULT chromeos-hd.${install_plan['target_slot_alphabet']}" > \
+          "${install_plan['efi_partition']}/syslinux/default.cfg"
+        if [ $? -ne 0 ]; then
+          echo_stderr "Failed to prioritize new root. Without it new update will not boot."
+          PostinstallRunnerAction_Cleanup
+          exit 1
+        fi
+      fi
     fi
     PostinstallRunnerAction_Cleanup
 }

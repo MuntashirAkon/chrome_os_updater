@@ -24,7 +24,7 @@ declare -A install_plan
 
 
 function GetCurrentSlot {  # Actually get current /dev/sdXX
-    mount | grep -E '\s/\s' -m 1 | awk '{print $1}' 2> /dev/null
+    rootdev -s 2> /dev/null
 }
 
 
@@ -43,12 +43,12 @@ function GetPartitionFromUUID {
     local label=$2  # Not empty
     local part=
     if [ "$uuid" == "" ]; then
-      echo_stderr "Empty UUID for ${label}, default will be used."
+      echo_stderr "Warning: Empty UUID for ${label}, default will be used."
       part=$(FindPartitionByLabel "${label}")
     else
       part=`/sbin/blkid --uuid "${uuid}"`
       if [ "${part}" == "" ]; then
-        echo_stderr "Given UUID for ${label} not found, default will be used."
+        echo_stderr "Warning: Given UUID for ${label} not found, default will be used."
         part=$(FindPartitionByLabel "${label}")
       fi
     fi
@@ -84,6 +84,7 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['powerwash_required']=false  # For now
     # target and source slots: we use them as /dev/sdXX loaded from cros_update.conf
     # Details specification: http://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
+    install_plan['target_slot_alphabet']=  # Alphabet 'A' or 'B' of the target slot
     install_plan['target_slot']=  # For our case, it's actually the target partition
     install_plan['source_slot']=  # For our case, it's actually the source partition
     install_plan['efi_slot']=  # Not included in the original install_plan, but required for us
@@ -100,8 +101,10 @@ function OmahaResponseHandlerAction_PerformAction {
     local current_slot=$(GetCurrentSlot)
     install_plan['source_slot']=${current_slot}
     if [ "${current_slot}" == "${root_a}" ]; then
+      install_plan['target_slot_alphabet']="B"
       install_plan['target_slot']=${root_b}
     elif [ "${current_slot}" == "${root_b}" ]; then
+      install_plan['target_slot_alphabet']="A"
       install_plan['target_slot']=${root_a}
     else
       echo_stderr "No valid target partition is found. Update aborted."

@@ -31,7 +31,7 @@ function GetCurrentSlot {  # Actually get current /dev/sdXX
 # $1: Label
 function FindPartitionByLabel {
     local label=$1
-    /sbin/blkid -o device -L "${label}"
+    /sbin/blkid -o device -t PARTLABEL="${label}"
 }
 
 

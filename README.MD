@@ -117,7 +117,9 @@ There's always a chance that something will go wrong. In this case, don't panic,
 
 ## References
 1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-2. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
-3. https://source.android.com/devices/tech/ota/ab/
-4. https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48
-5. https://chromium.googlesource.com/chromiumos/third_party/grub2/+/refs/heads/master/grub-core/commands/gptpriority.c
+2. https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/build_library/disk_layout_v2.json
+3. https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/build_library/create_legacy_bootloader_templates.sh
+4. https://chromium.googlesource.com/chromiumos/third_party/grub2/+/refs/heads/master/grub-core/commands/gptpriority.c
+5. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
+6. https://source.android.com/devices/tech/ota/ab/
+7. https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48

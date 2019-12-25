@@ -70,7 +70,10 @@ ec_version_=  # We don't have this
 current_channel_="${kUpdateChannelKey}"
 target_channel_="${kUpdateChannelKey}"
 # Use `export CUSTOM_RELEASE_TRACK={dev|canary|beta|stable}-channel` to switch channels
-if [ "${CUSTOM_RELEASE_TRACK}" ]; then target_channel_="${CUSTOM_RELEASE_TRACK}"; fi
+if [ "${CUSTOM_RELEASE_TRACK}" ]; then
+  echo_stderr "Warning: using $CUSTOM_RELEASE_TRACK, previous channel was $current_channel_" 
+  target_channel_="${CUSTOM_RELEASE_TRACK}"; 
+fi
 if [ "${current_channel_}" == "${target_channel_}" ]; then
   if [ -e "/.nodelta" ]; then
     delta_okay_="false";

@@ -101,19 +101,26 @@ export CUSTOM_RELEASE_TRACK=dev-channel
 
 ### How to revert back if something goes wrong
 
-There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps bellow.
+There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps below.
 
-- Find the disk id of **ROOT-A** and **ROOT-B** partitions
-- Now find the partition UUID of the partitions, like this (search online for appropriate command if you're using Windows or macOS)
-```sh
-/sbin/blkid -s PARTUUID -o value /dev/<disk-id>
-```
-- Mount the **EFI-SYSTEM** partition using Disks or other tools or command line (for Windows and macOS users, this should already be mounted)
-- Nevigate to `efi/boot/grub.cfg` and open for editing (on Linux, you'll need root permissions)
-- Find the existing PARTUUID (look at the first entry, i.e. **local image A**) and match it with the UUIDs you've extracted earlier
-- Replace the PARTUUID which is *not* present there
-- Reboot
-- This should restore Chrome OS to the previous version
+1. Mount the **EFI-SYSTEM** partition (with `vfat` type and write permission) using *Gparted* (available on Ubuntu Live), *Disks* (comes built-in with Ubuntu), `mount` or other tools. For Windows and macOS users, this partition should already be mounted.
+2. If you're using EFI mode, follow steps 3-5. If you're using legacy mode, follow steps 6-8. Otherwise follow all the steps and don't reboot in step 5.
+3. Navigate to `efi/boot/grub.cfg` inside the disk and open for editing (on Linux, you'll need root permission).
+4. In the 9th line, you'll find something like this:
+   ```
+   set default=$defaultA
+   ```
+   Here `$defaultA` might be `$defaultB` for you. If it is set to `$defaultB` make it to `$defaultA` or vice versa. Do the same in the 7th line as well (especially if you've done a clean install).
+5. Save it and reboot.
+6. Navigate to `syslinux/default.cfg` inside the disk and open for editing (on Linux, you'll need root permission).
+7. You'll find a single line like this:
+   ```
+   DEFAULT chromeos-hd.A
+   ```
+   Here `chromeos-hd.A` might be `chromeos-hd.B` for you. If it is set to `chromeos-hd.B` make it to `chromeos-hd.A` or vice versa.
+8. Save and reboot
+
+This should restore Chrome OS to the previously installed version
 
 ## References
 1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format

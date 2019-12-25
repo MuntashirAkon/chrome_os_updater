@@ -52,7 +52,7 @@ Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is 
 
 Download the latest release from the release section and extract the zip file. Typically, the extracted folder should be located at `~/Downloads` (ie. `~/Downloads/chrome_os_updater`). Now, you cannot run executables from this directory. So, you'll have to move it to some where you can run them. For our purpose, we will utlize `/usr/local`.
 
-Now open **Shell** by pressing `Ctrl` + `Alt` + `t`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
+Now open crosh terminal by pressing `Ctrl` + `Alt` + `t`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
 
 **Create updater directory**
 ```sh
@@ -67,6 +67,10 @@ sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
 Optionally, you can also create a symbolic link for quicker access:
 ```sh
 sudo ln -s /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
+```
+and to make it executable:
+```sh
+sudo chmod +x /usr/local/bin/omaha_cros_update.sh
 ```
 
 #### Usage
@@ -83,25 +87,46 @@ bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh
 
 Required files will be downloaded automatically. An active Internet connection is required.
 
-NOTE: Be sure to boot in (U)EFI mode as the efi partition will not boot in legacy mode.
+**Switch update channel**
+
+It is possible to switch update channel (however, this is not tested by myself yet). To switch update channel, you need to export `CUSTOM_RELEASE_TRACK` environment variable in the crosh terminal before running the updater:
+```sh
+export CUSTOM_RELEASE_TRACK=dev-channel
+```
+`CUSTOM_RELEASE_TRACK` can take one of the following values:
+- dev-channel
+- canary-channel
+- beta-channel
+- stable-channel
 
 ### How to revert back if something goes wrong
 
-There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps bellow.
+There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps below.
 
-- Find the disk id of **ROOT-A** and **ROOT-B** partitions
-- Now find the partition UUID of the partitions, like this (search online for appropriate command if you're using Windows or macOS)
-```sh
-/sbin/blkid -s PARTUUID -o value /dev/<disk-id>
-```
-- Mount the **EFI-SYSTEM** partition using Disks or other tools or command line (for Windows and macOS users, this should already be mounted)
-- Nevigate to `efi/boot/grub.cfg` and open for editing (on Linux, you'll need root permissions)
-- Find the existing PARTUUID (look at the first entry, i.e. **local image A**) and match it with the UUIDs you've extracted earlier
-- Replace the PARTUUID which is *not* present there
-- Reboot
-- This should restore Chrome OS to the previous version
+1. Mount the **EFI-SYSTEM** partition (with `vfat` type and write permission) using *Gparted* (available on Ubuntu Live), *Disks* (comes built-in with Ubuntu), `mount` or other tools. For Windows and macOS users, this partition should already be mounted.
+2. If you're using EFI mode, follow steps 3-5. If you're using legacy mode, follow steps 6-8. Otherwise follow all the steps and don't reboot in step 5.
+3. Navigate to `efi/boot/grub.cfg` inside the disk and open for editing (on Linux, you'll need root permission).
+4. In the 9th line, you'll find something like this:
+   ```
+   set default=$defaultA
+   ```
+   Here `$defaultA` might be `$defaultB` for you. If it is set to `$defaultB` make it to `$defaultA` or vice versa. Do the same in the 7th line as well (especially if you've done a clean install).
+5. Save it and reboot.
+6. Navigate to `syslinux/default.cfg` inside the disk and open for editing (on Linux, you'll need root permission).
+7. You'll find a single line like this:
+   ```
+   DEFAULT chromeos-hd.A
+   ```
+   Here `chromeos-hd.A` might be `chromeos-hd.B` for you. If it is set to `chromeos-hd.B` make it to `chromeos-hd.A` or vice versa.
+8. Save and reboot
+
+This should restore Chrome OS to the previously installed version
 
 ## References
 1. https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-2. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
-3. https://source.android.com/devices/tech/ota/ab/
+2. https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/build_library/disk_layout_v2.json
+3. https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/build_library/create_legacy_bootloader_templates.sh
+4. https://chromium.googlesource.com/chromiumos/third_party/grub2/+/refs/heads/master/grub-core/commands/gptpriority.c
+5. https://android.googlesource.com/platform/system/update_engine/+/refs/heads/master
+6. https://source.android.com/devices/tech/ota/ab/
+7. https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48

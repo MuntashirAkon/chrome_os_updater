@@ -47,9 +47,9 @@ function UpdateBootloaders {
     # Check if both kernels are exists
     local kern_a_part=$PARTITION_NUM_KERN_A
     local kern_b_part=$PARTITION_NUM_KERN_B
-    if [ $kern_a_part ] && [ $kern_b_part ]; then
-      kern_a_part=`FindPartitionByLabel "KERN-A" | grep $root_dev | sed "s|$root_dev\(.*\)|\1|"`
-      kern_b_part=`FindPartitionByLabel "KERN-B" | grep $root_dev | sed "s|$root_dev\(.*\)|\1|"`
+    if ! ( [ $kern_a_part ] && [ $kern_b_part ] ); then
+      kern_a_part=`FindPartitionByLabel "KERN-A" $root_dev | sed "s|$root_dev\(.*\)|\1|"`
+      kern_b_part=`FindPartitionByLabel "KERN-B" $root_dev | sed "s|$root_dev\(.*\)|\1|"`
     fi
     if [ $kern_a_part ] && [ $kern_b_part ]; then
       # Set gpt priority: works only if the EFI-SYSTEM is in the same drive as the ROOT

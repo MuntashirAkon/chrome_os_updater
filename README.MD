@@ -7,16 +7,16 @@ Update Chrome OS on regular PCs
 <details>
  <summary>Index</summary>
  
-- [Guide](#guide)
-  * [Background](#background)
-  * [Installation and Usage](#installation-and-usage)
-  * [How to revert back if something goes wrong](#how-to-revert-back-if-something-goes-wrong)
+- [Background](#background)
+- [Installation and Usage](#installation-and-usage)
+  * [Requirements](#requirements)
+  * [Installation](#installation)
+  * [Usage](#usage)
+- [How to revert back if something goes wrong](#how-to-revert-back-if-something-goes-wrong)
 - [References](#references)
 </details>
 
-## Guide
-
-### Background
+## Background
 
 Chrome OS has two _root_ partitions namely **ROOT-A** and **ROOT-B** (partition numbered 3 and 5 respectively). On a regular installation, **ROOT-A** partition is actually the root partition you boot from, and **ROOT-B** partition is only used when you update your Chromebook from *About Chrome OS* page. When you update for the first time, the update is installed at **ROOT-B** partition. So, until you install another update, this partition is the one you boot from. And when another update is installed, it is installed at **ROOT-A**, and again, you boot from **ROOT-A** partition (you get the idea). This is also know as A/B update. I followed similar yet somewhat modified approach to develop `omaha_cros_update.sh` script which can be used to update regular PCs to the latest version of Chrome OS.
 
@@ -26,11 +26,11 @@ Previously on a [separate project](https://github.com/MuntashirAkon/Chrome-OS-Mu
 
 Consequently, it requires another partition namely **ROOT-B** as well as two optional **KERN-A** and **KERN-B** partitions (the last two partitions are there for kernel storage, but can be empty in our case). In a regular installation, the partitions are already there (remember to increase size of both **ROOT-A** and **ROOT-B** to at least 4 GB), but if you're multibooting with other OSs following my previous instructions, you'll need to create another partition (with `EXT2` partition type and 5 GB size) namely **ROOT-B**. After you apply update from **ROOT-A**, **ROOT-B** will be used as the root partition and vice versa. The benefit of using this approach is that if, for some reason, update doesn't work as expected, you can still be able to use Chrome OS by simply selecting the other partition in the GRUB menu or changing the default partition in the GRUB configuration file.
 
-### Installation and Usage
+## Installation and Usage
 
-#### Requirements
+### Requirements
 
-There is no requirment for the regular installation (ie. wiping the whole drive to install Chrome OS). You will need a configuration file if
+**There is no requirment for default/regular installation** (ie. wiping the whole drive to install Chrome OS). You will need a configuration file if
 - (even one or more of) the partition names (also known as partition labels or `PARTLABEL`) are not standard. The standard partition names (for our purpose) are **KERN-A**, **KERN-B**, **ROOT-A**, **ROOT-B**, **EFI-SYSTEM** (KERN-* partitions are optional). If (even one or more of) the partitions of the drive doesn't have the standard labels, you will need this configuration file.
 - you're crazy enough to install two or more Chrome OS in the same drive
 - you're not going to use swtpm module even if your kernel supports it (you only need `TPM=false`)
@@ -59,18 +59,18 @@ Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is 
 
 </details>
 
-#### Installation
+### Installation
 
 Download the latest release from the release section and extract the zip file. Typically, the extracted folder should be located at `~/Downloads` (ie. `~/Downloads/chrome_os_updater`). Now, you cannot run executables from this directory. So, you'll have to move the folder to some place where you can run executables. For our purpose, we will utlize `/usr/local`.
 
 Now, open crosh terminal by pressing `Ctrl` + `Alt` + `T`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
 
-**Create updater directory**
+#### Create updater directory
 ```sh
 sudo mkdir /usr/local/updater
 ```
 
-**Copy updater script**
+#### Copy updater script
 ```sh
 sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
 ```
@@ -84,21 +84,21 @@ and to make it executable:
 sudo chmod +x /usr/local/bin/omaha_cros_update.sh
 ```
 
-#### Usage
+### Usage
 
-**Check for updates**
+#### Check for updates
 ```sh
 bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh --check-only
 ```
 
-**Update Chrome OS**
+#### Update Chrome OS
 ```sh
 bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh
 ```
 
 Required files will be downloaded automatically. An active Internet connection is required throughout the process.
 
-**Switch update channel**
+#### Switch update channel
 
 It is possible to switch update channel (however, this is not tested by myself yet). To switch update channel, you need to export `CUSTOM_RELEASE_TRACK` environment variable in the crosh terminal before running the updater. Here's an example:
 ```sh
@@ -110,7 +110,7 @@ export CUSTOM_RELEASE_TRACK=dev-channel
 - beta-channel
 - stable-channel
 
-### How to revert back if something goes wrong
+## How to revert back if something goes wrong
 
 There's always a chance that something will go wrong. In this case, don't panic, but you'll need to use Ubuntu Live (or other Linux distro or even Windows or macOS). Boot into it and follow the steps below.
 

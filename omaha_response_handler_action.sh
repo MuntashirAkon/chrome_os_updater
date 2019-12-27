@@ -16,7 +16,7 @@ kCrosUpdateConf="/usr/local/cros_update.conf" # Our conf file
 # ROOTA='<ROOT-A UUID, lowercase>'
 # ROOTB='<ROOT-B UUID, lowercase>'
 # EFI='<EFI-SYSTEM UUID, lowercase>'
-# TPM=true/false (default: true)
+# TPM=true/false (default: auto)
 
 
 # install_plan assoc array, refer to ./payload_consumer/install_plan.cc
@@ -60,7 +60,6 @@ function GetPartitionFromUUID {
     echo "${part}"
 }
 
-
 #
 # OmahaResponseHandlerAction::PerformAction
 #
@@ -93,7 +92,7 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['target_slot']=  # For our case, it's actually the target partition
     install_plan['source_slot']=  # For our case, it's actually the source partition
     install_plan['efi_slot']=  # Not included in the original install_plan, but required for us
-    install_plan['tpm']="true"  # TPM is true by default
+    install_plan['tpm']="auto"  # TPM support is automatically detected by default
     # Create cros_update.conf if not exists
     touch "${kCrosUpdateConf}"
     # Use the conf
@@ -116,8 +115,9 @@ function OmahaResponseHandlerAction_PerformAction {
       exit 1
     fi
     install_plan['efi_slot']=$(GetPartitionFromUUID "${EFI}" 'EFI-SYSTEM')
-    if [ "${TPM}" == "false" ]; then
-      install_plan['tpm']="false"
+    if [ -n "${TPM}" ]; then
+      # Forced vtpm (true/false)
+      install_plan['tpm']="${TPM}"
     fi
     install_plan['is_rollback']=true  # No functionality
     install_plan['powerwash_required']=false  # No functionality

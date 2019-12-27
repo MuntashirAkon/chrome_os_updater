@@ -143,10 +143,6 @@ function PostinstallRunnerAction_CompletePostinstall {
                       "${root_a}" "${root_a}" \
                       "${install_plan['efi_slot']}"
     # Update partition data
-    # Just copy the previous write_gpt.sh, should go in the delta_performer.sh but kept here
-    # since related works are done here
-    rm "${install_plan['write_gpt_path']}"
-    cp /usr/sbin/write_gpt.sh "${install_plan['target_partition']}/usr/sbin/"
     # There are three situations to deal with:
     # 1. ROOT_B doesn't exist in write_gpt.sh (but physically exists, of course)
     #    This is true for multibooted devices in general and in some special installations.
@@ -202,6 +198,30 @@ function PostinstallRunnerAction_CompletePostinstall {
     PostinstallRunnerAction_Cleanup
 }
 
+
+# Determine support for swtpm
+# NOTE: Although ArnoldTheBat's builds (74 or later) come with kernel
+# that supports swtpm, other builds (e.g. FydeOS) may not support this.
+PostinstallRunnerAction_DetermineSWTPMSupport {
+    if [ "${install_plan['tpm']}" == "false" ]; then
+      # swtpm is forced disabled
+      return 1
+    else
+      # Currently, tpm=true/auto has no difference here because if support
+      # for swtpm support is not present, there's no point in applying it.
+      kern_count=$(ls "${install_plan['target_partition']}/lib/modules" | wc -l) # Should be 1, but could be more than 1
+      real_count=$(cat "${install_plan['target_partition']}"/lib/modules/*/modules.dep | grep tpm_vtpm_proxy.ko | wc -l 2> /dev/null)
+      real_count=$(( real_count + $(cat "${install_plan['target_partition']}"/lib/modules/*/modules.builtin | grep tpm_vtpm_proxy.ko | wc -l 2> /dev/null) ))
+      if [ $kern_count -eq $real_count ]; then
+        # All kernels support swtpm
+        install_plan['tpm']="true"
+      else
+        # Not all kernels support swtpm
+        install_plan['tpm']="false"
+      fi
+    fi
+}
+
 #
 # PostinstallRunnerAction::PerformPartitionPostinstall
 #
@@ -210,6 +230,7 @@ function PostinstallRunnerAction_PerformPartitionPostinstall {
     install_plan['swtpm_tar']="${install_plan['download_root']}/swtpm.tar"
     install_plan['swtpm_path']="${install_plan['download_root']}/swtpm"
     # swtpm
+    PostinstallRunnerAction_DetermineSWTPMSupport
     if [ "${install_plan['tpm']}" == "true" ]; then
       # FIXME: Handle errors properly
       # Download swtpm

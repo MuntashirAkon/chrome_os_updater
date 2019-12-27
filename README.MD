@@ -33,7 +33,7 @@ Consequently, it requires another partition namely **ROOT-B** as well as two opt
 There is no requirment for the regular installation (ie. wiping the whole drive to install Chrome OS). You will need a configuration file if
 - (even one or more of) the partition names (also known as partition labels or `PARTLABEL`) are not standard. The standard partition names (for our purpose) are **KERN-A**, **KERN-B**, **ROOT-A**, **ROOT-B**, **EFI-SYSTEM** (KERN-* partitions are optional). If (even one or more of) the partitions of the drive doesn't have the standard labels, you will need this configuration file.
 - you're crazy enough to install two or more Chrome OS in the same drive
-- you're using swtpm module (you only need `TPM=true`, other values can be ignored)
+- you're not going to use swtpm module even if your kernel supports it (you only need `TPM=false`)
 
 *If the configuration file does not exist, the updater will fall back to the standard labels and will issue a warning.*
 
@@ -47,12 +47,13 @@ ROOTB='<ROOT-B UUID, lowercase>'
 EFI='<EFI-SYSTEM UUID, lowercase>'
 TPM=true/false
 ```
+Each value is optional. If a value doesn't exist, default will be used (if available). For swtpm: if you set `TPM=false`, the swtpm installation will be ignored during the update; otherwise, the updater will automatically determine if swtpm is need.
 
 You can get UUID for a disk ID using the following command:
 ```bash
 /sbin/blkid -s UUID -o value /dev/<disk-id>
 ```
-*Note that **partition UUID** and **UUID** are not the same.*
+*Notice: **partition UUID** (goes by the name `PARTUUID`) and **UUID** are not the same.*
 
 Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is `/usr/local/cros_update.conf`).
 

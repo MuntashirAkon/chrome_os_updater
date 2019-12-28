@@ -182,8 +182,10 @@ function PostinstallRunnerAction_CompletePostinstall {
         part_num=`FindPartitionByLabel "KERN-${install_plan['target_slot_alphabet']}"`
       fi
       # Change boot priority
-      cgpt prioritize -P 4 $root_dev \
-      && cgpt add -i ${!part_num} -P 5 -T 0 -S 1 $root_dev  # Boot as successful device for now
+      # Mark the kernel as successfully booted (success=1, tries=0).
+      cgpt add "${root_dev}" -i ${!part_num} -S1 -T0
+      # Mark the kernel as highest priority
+      cgpt prioritize "${root_dev}" -i ${!part_num}  # Boot as successful device for now
       if [ $? -ne 0 ]; then
         # Probably not EFI, try syslinux
         echo "DEFAULT chromeos-hd.${install_plan['target_slot_alphabet']}" > \

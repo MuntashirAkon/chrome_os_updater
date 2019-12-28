@@ -13,19 +13,24 @@ function echo_stderr {
 }
 
 # Load environment variables from lsb-release
-lsb_release='/etc/lsb-release'
+# It has to locations: /etc/ and /usr/local/etc/
+# Later has the highest priority, so comes later
+lsb_release="/etc/lsb-release"
 if ! [ -f "${lsb_release}" ]; then
-    echo_stderr "No ${lsb_release} found! You must run this script inside Chrome OS!"
-    exit 1
+  echo_stderr "No ${lsb_release} found. Update aborted."
+  exit 1
 fi
-CHROMEOS_AUSERVER=`grep 'CHROMEOS_AUSERVER' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_BOARD_APPID=`grep 'CHROMEOS_BOARD_APPID' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_CANARY_APPID=`grep 'CHROMEOS_CANARY_APPID' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_RELEASE_APPID=`grep 'CHROMEOS_RELEASE_APPID' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_RELEASE_BOARD=`grep 'CHROMEOS_RELEASE_BOARD' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_RELEASE_NAME=`grep 'CHROMEOS_RELEASE_NAME' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_RELEASE_TRACK=`grep 'CHROMEOS_RELEASE_TRACK' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
-CHROMEOS_RELEASE_VERSION=`grep 'CHROMEOS_RELEASE_VERSION' "${lsb_release}" | sed 's/.*=\(.*\)/\1/' 2> /dev/null`
+
+# A rather clever hack to load lsb-release contents
+cat "${lsb_release}" | awk -F '=' '{print $1 "=\"" $2 "\""}' | tee /tmp/lsb-release
+. /tmp/lsb-release
+# Look for lsb-release at /usr/local/etc/
+lsb_release="/usr/local/etc/lsb-release"
+if [ -f "${lsb_release}" ]; then
+  # Load lsb-release from there, which will overwrite many previous values
+  cat "${lsb_release}" | awk -F '=' '{print $1 "=\"" $2 "\""}' | tee /tmp/lsb-release
+  . /tmp/lsb-release
+fi
 CHROMEOS_IS_POWERWASH_ALLOWED=
 
 # Global vars

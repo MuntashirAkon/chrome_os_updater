@@ -21,15 +21,12 @@ if ! [ -f "${lsb_release}" ]; then
   exit 1
 fi
 
-# A rather clever hack to load lsb-release contents
-cat "${lsb_release}" | awk -F '=' '{print $1 "=\"" $2 "\""}' | tee /tmp/lsb-release
-. /tmp/lsb-release
+eval $(cat "${lsb_release}" | awk '{print "export \"" $1 "\""}')
 # Look for lsb-release at /usr/local/etc/
 lsb_release="/usr/local/etc/lsb-release"
 if [ -f "${lsb_release}" ]; then
   # Load lsb-release from there, which will overwrite many previous values
-  cat "${lsb_release}" | awk -F '=' '{print $1 "=\"" $2 "\""}' | tee /tmp/lsb-release
-  . /tmp/lsb-release
+  eval $(cat "${lsb_release}" | awk '{print "export \"" $1 "\""}')
 fi
 CHROMEOS_IS_POWERWASH_ALLOWED=
 
@@ -75,7 +72,7 @@ ec_version_=  # We don't have this
 current_channel_="${kUpdateChannelKey}"
 target_channel_="${kUpdateChannelKey}"
 # Use `export CUSTOM_RELEASE_TRACK={dev|canary|beta|stable}-channel` to switch channels
-if [ "${CUSTOM_RELEASE_TRACK}" ]; then
+if [ -n "${CUSTOM_RELEASE_TRACK}" ]; then
   echo_stderr "Warning: using $CUSTOM_RELEASE_TRACK, previous channel was $current_channel_" 
   target_channel_="${CUSTOM_RELEASE_TRACK}"; 
 fi

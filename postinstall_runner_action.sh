@@ -204,7 +204,7 @@ function PostinstallRunnerAction_CompletePostinstall {
 # Determine support for swtpm
 # NOTE: Although ArnoldTheBat's builds (74 or later) come with kernel
 # that supports swtpm, other builds (e.g. FydeOS) may not support this.
-PostinstallRunnerAction_DetermineSWTPMSupport {
+function PostinstallRunnerAction_DetermineSWTPMSupport {
     if [ "${install_plan['tpm']}" == "false" ]; then
       # swtpm is forced disabled
       return 1

@@ -61,39 +61,28 @@ Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is 
 
 ### Installation
 
-Download the latest release from the release section and extract the zip file. Typically, the extracted folder should be located at `~/Downloads` (ie. `~/Downloads/chrome_os_updater`). Now, you cannot run executables from this directory. So, you'll have to move the folder to some place where you can run executables. For our purpose, we will utlize `/usr/local`.
+Open crosh shell by pressing `Ctrl` + `Alt` + `T` and the type `shell`. Now copy and paste the command below (don't use `sudo`!):
 
-Now, open crosh terminal by pressing `Ctrl` + `Alt` + `T`, and then type `shell` to open command prompt. In the command prompt, execute the following commands:
-
-#### Create updater directory
 ```sh
-sudo mkdir /usr/local/updater
+curl -Ls https://raw.githubusercontent.com/MuntashirAkon/chrome_os_updater/master/installer.sh | bash
 ```
 
-#### Copy updater script
-```sh
-sudo cp -a ~/Downloads/chrome_os_updater /usr/local/updater
-```
+or, an easy to remember command:
 
-Optionally, you can also create a symbolic link for quicker access:
 ```sh
-sudo ln -s /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh
-```
-and to make it executable:
-```sh
-sudo chmod +x /usr/local/bin/omaha_cros_update.sh
+curl -Ls https://cutt.ly/cros_updater | bash
 ```
 
 ### Usage
 
 #### Check for updates
 ```sh
-bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh --check-only
+omaha_cros_update.sh --check-only
 ```
 
 #### Update Chrome OS
 ```sh
-bash /usr/local/updater/chrome_os_updater/omaha_cros_update.sh
+sudo -E omaha_cros_update.sh
 ```
 
 Required files will be downloaded automatically. An active Internet connection is required throughout the process.

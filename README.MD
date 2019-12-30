@@ -87,7 +87,7 @@ Required files will be downloaded automatically. An active Internet connection i
 
 #### Switch update channel
 
-It is possible to switch update channel (however, this is not tested by myself yet). To switch update channel, you need to export `CUSTOM_RELEASE_TRACK` environment variable in the crosh terminal before running the updater. Here's an example:
+It is possible to switch update channel. To switch update channel, you need to export `CUSTOM_RELEASE_TRACK` environment variable in the crosh terminal before running the updater. Here's an example:
 ```sh
 export CUSTOM_RELEASE_TRACK=dev-channel
 ```
@@ -96,6 +96,10 @@ export CUSTOM_RELEASE_TRACK=dev-channel
 - canary-channel
 - beta-channel
 - stable-channel
+
+#### Debugging
+
+`export CROS_DEBUG=y` before running the script to print debug log.
 
 ## How to revert back if something goes wrong
 

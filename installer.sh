@@ -7,7 +7,7 @@ sudo mount -o rw,remount /
 # Install crew
 crew="$(command -v crew)"
 if ! [ -x "${crew}" ]; then
-    curl -Ls https://raw.github.com/skycocker/chromebrew/master/install.sh | bash
+    curl -Ls https://raw.github.com/skycocker/chromebrew/master/install.sh | bash <<<Y
 fi
 crew="$(command -v crew)"
 if ! [ -x "${crew}" ]; then
@@ -30,21 +30,26 @@ if ! [ -x "${pip}" ]; then
     echo "Failed to install pip!"
     exit 1
 fi
-# Install protobuf and lzma
-sudo "${pip}" install protobuf backports.lzma
+# Install protobuf
+sudo "${pip}" install protobuf
 if [ $? -ne 0 ]; then
-    echo "Failed to install protobuf or lzma python module(s)!"
+    echo "Failed to install protobuf python module(s)!"
+    exit 1
+fi
+# Install lzma
+sudo "${pip}" install backports.lzma
+if [ $? -ne 0 ]; then
+    echo "Failed to install lzma python module(s)!"
     exit 1
 fi
 ## Install chrome_os_updater
 echo "Installing chrome_os_updater..."
 install_dir="/usr/local/updater"
 sudo rm -rf /usr/local/updater/chrome_os_updater 2> /dev/null
-sudo rm /usr/local/bin/omaha_cros_update.sh 2> /dev/null
 curl -Ls https://github.com/MuntashirAkon/chrome_os_updater/archive/master.zip -o /tmp/cros_updater.zip && \
 sudo unzip -o -d "${install_dir}" /tmp/cros_updater.zip && \
 sudo mv "${install_dir}/chrome_os_updater-master" "${install_dir}/chrome_os_updater" && \
-sudo ln -s /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh && \
+sudo ln -sfn /usr/local/updater/chrome_os_updater/omaha_cros_update.sh /usr/local/bin/omaha_cros_update.sh && \
 sudo chmod +x /usr/local/bin/omaha_cros_update.sh
 if [ $? -ne 0 ]; then
     echo "Failed to install chrome_os_updater!"

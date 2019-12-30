@@ -8,13 +8,32 @@
 # Get script directory 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+function debug {
+    if [ $CROS_DEBUG ]; then
+        echo "DEBUG: $@"
+    fi
+}
+
+function print_env {
+    if [ $CROS_DEBUG ]; then
+      # print environment variables
+      ( set -o posix ; set )
+    fi
+}
+
+function delete_update_file {
+    if ! [ $CROS_DEBUG ]; then
+      rm "${install_plan['update_file_path']}"
+    fi
+}
+
 #
 # DeltaPerformer::Close
 #
 function DeltaPerformer_Close {
     umount "${install_plan['root_mountpoint']}"
     # umount "${install_plan['target_partition']}"
-    rm "${install_plan['update_file_path']}"
+    delete_update_file
     rm "${install_plan['kernel_path']}" 2> /dev/null
     rm "${install_plan['root_path']}" 2> /dev/null
     rmdir "${install_plan['root_mountpoint']}"
@@ -33,7 +52,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     python "$SCRIPT_DIR/scripts/paycheck.py" "${install_plan['update_file_path']}" --out_dst_part_paths  "${install_plan['kernel_path']}" "${install_plan['root_path']}"
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to extract root image from update."
-      rm "${install_plan['update_file_path']}"
+      delete_update_file
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       exit 1
@@ -43,7 +62,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     mount -t ext4 -o ro "${install_plan['root_path']}" "${install_plan['root_mountpoint']}"
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to mount root image."
-      rm "${install_plan['update_file_path']}"
+      delete_update_file
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"
@@ -53,9 +72,9 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     mkdir "${install_plan['target_partition']}"
     mount -t ext4 -o rw,exec "${install_plan['target_slot']}" "${install_plan['target_partition']}"
     if [ $? -ne 0 ] || [ "${install_plan['target_slot']}" == "" ]; then
-      echo_stderr "Failed to mount root image."
+      echo_stderr "Failed to mount target partition."
       umount "${install_plan['root_mountpoint']}"
-      rm "${install_plan['update_file_path']}"
+      delete_update_file
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"
@@ -70,10 +89,13 @@ function DeltaPerformer_PreparePartitionsForUpdate {
 function DeltaPerformer_Write {
     echo_stderr "Updating Chrome OS..."
     DeltaPerformer_PreparePartitionsForUpdate
+    # TODO: Do some error checking
     # Copy update files
     # Copy contents of root.img to the target partition
     rm -rf "${install_plan['target_partition']}"/*
-    cp -a "${install_plan['root_mountpoint']}"/* "${install_plan['target_partition']}" 2> /dev/null
+    cp -a "${install_plan['root_mountpoint']}"/* "${install_plan['target_partition']}"
+    debug "Image contents: $(ls "${install_plan['root_mountpoint']}")"
+    debug "Partition contents: $(ls "${install_plan['target_partition']}")"
     # Delete kernel modules, firmware and alsa audio config files
     rm -rf "${install_plan['target_partition']}/lib/firmware" "${install_plan['target_partition']}/lib/modules"
     rm "${install_plan['target_partition']}/etc/modprobe.d"/alsa*.conf

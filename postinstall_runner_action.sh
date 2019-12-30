@@ -58,8 +58,11 @@ function UpdateBootloaders {
       local old_prioB=`grep -m 2 "gptpriority" "${grub_cfg_path}" | tail -1`
       local new_prioA="gptpriority \$grubdisk ${kern_a_part} prioA"
       local new_prioB="gptpriority \$grubdisk ${kern_b_part} prioB"
-      sed -i "s|${old_prioA}|${new_prioA}|" "${grub_cfg_path}"
+      # Replace all with new PrioB
+      sed -i "s|${old_prioA}|${new_prioB}|" "${grub_cfg_path}"
       sed -i "s|${old_prioB}|${new_prioB}|" "${grub_cfg_path}"
+      # Replace first one with prioA
+      sed -i "0,/${new_prioB}/s|${new_prioB}|${new_prioA}|" "${grub_cfg_path}"
     fi
     # Get current (now old) values
     # NOTICE: The verified images are not supported when root is modified, therefore, they are ignored.
@@ -68,9 +71,11 @@ function UpdateBootloaders {
     # Get root uuids
     local root_a_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_a_part)"
     local root_b_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_b_part)"
-    # Replace with the current values
-    sed -i "s|${root_b_val}|${root_b_uuid}|" "${grub_cfg_path}"  # Replace all old values with ROOT-B
-    sed -i "0,/${root_b_uuid}/s|${root_a_val}|${root_a_uuid}|" "${grub_cfg_path}"  # Replace only ROOT-A
+    # Replace all old values with new values of ROOT-B
+    sed -i "s|${root_a_val}|${root_b_uuid}|" "${grub_cfg_path}"
+    sed -i "s|${root_b_val}|${root_b_uuid}|" "${grub_cfg_path}"
+    # Replace first one with new value of ROOT-A
+    sed -i "0,/${root_b_uuid}/s|${root_b_uuid}|${root_a_uuid}|" "${grub_cfg_path}"
     ### For Syslinux ###
     # Get current (now old) values
     local syslinux_path="${root}/boot/syslinux"

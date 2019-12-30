@@ -4,6 +4,7 @@
 ## Install requirements
 # mount / as rw
 sudo mount -o rw,remount /
+sudo mount -o exec,remount /tmp
 # Install crew
 crew="$(command -v crew)"
 if ! [ -x "${crew}" ]; then
@@ -31,13 +32,13 @@ if ! [ -x "${pip}" ]; then
     exit 1
 fi
 # Install protobuf
-sudo "${pip}" install protobuf
+"${pip}" install protobuf
 if [ $? -ne 0 ]; then
     echo "Failed to install protobuf python module(s)!"
     exit 1
 fi
 # Install lzma
-sudo "${pip}" install backports.lzma
+"${pip}" install backports.lzma
 if [ $? -ne 0 ]; then
     echo "Failed to install lzma python module(s)!"
     exit 1

@@ -2,8 +2,6 @@
 
 Update Chrome OS on regular PCs
 
-*Download releases from the [release](https://github.com/MuntashirAkon/chrome_os_updater) section. **DON'T** download the repository as it may be unstable and endup breaking Chrome OS. Use the associated README file for instructions.*
-
 <details>
  <summary>Index</summary>
  

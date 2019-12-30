@@ -165,7 +165,7 @@ function PostinstallRunnerAction_CompletePostinstall {
     # Reset bootloaders (efi, syslinux)
     UpdateBootloaders "${install_plan['target_partition']}" \
                       "${install_plan['efi_partition']}" \
-                      "${root_a}" "${root_a}" \
+                      "${root_a}" "${root_b}" \
                       "${install_plan['efi_slot']}"
     # Update partition data
     # There are three situations to deal with:

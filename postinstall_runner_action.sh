@@ -12,6 +12,19 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/download_action.sh"
 . "$SCRIPT_DIR/delta_performer.sh"
 
+function debug {
+    if [ $CROS_DEBUG ]; then
+        echo "DEBUG: $@"
+    fi
+}
+
+function print_env {
+    if [ $CROS_DEBUG ]; then
+      # print environment variables
+      ( set -o posix ; set )
+    fi
+}
+
 #
 # UpdateBootloaders, similar to update_x86_bootloaders.sh
 # located at https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/update_bootloaders.sh
@@ -33,13 +46,16 @@ function UpdateBootloaders {
     # Sometimes, /boot and /boot/vmlinuz doesn't exist
     if [ ! -f "${root}/boot/vmlinuz" ]; then
       >&2 echo "${root}/boot or ${root}/boot/vmlinuz not found."
+      print_env
       exit 1
     fi
     # Although documented, check if $efi_path is actually a mount point
     if ! mountpoint -q "$efi_path"; then
       >&2 echo "$efi_path is not a mountpoint."
+      print_env
       exit 1
     fi
+    debug "UpdateBootloaders: $@"
     ### For EFI ###
     local grub_cfg_path="${root}/boot/efi/boot/grub.cfg"
     . "${root}/usr/sbin/write_gpt.sh"
@@ -96,6 +112,7 @@ function UpdateBootloaders {
     #umount "${efi_path}"
     #syslinux -d /syslinux "${efi_part}"
     #mount "${efi_part}" "${efi_path}"
+    debug "grub.cfg: $(cat "${efi_path}"/efi/boot/grub.cfg)"
 }
 
 #
@@ -106,6 +123,7 @@ function PostinstallRunnerAction_Cleanup {
     rmdir "${install_plan['target_partition']}"
     umount "${install_plan['efi_partition']}"
     rmdir "${install_plan['efi_partition']}"
+    print_env
 }
 
 #
@@ -124,6 +142,7 @@ function PostinstallRunnerAction_ChangeBootOrder {
         PostinstallRunnerAction_Cleanup
         exit 1
       fi
+      debug "Syslinux: $sys_default, original $(cat "${install_plan['efi_partition']}/syslinux/default.cfg")"
 }
 
 #
@@ -164,6 +183,7 @@ function PostinstallRunnerAction_CompletePostinstall {
     # FIXME: Simplify by including write_gpt.sh at the top
     if ! grep -qE "_(ROOT_B|5)" "${install_plan['write_gpt_path']}"; then  # Situation#1
       # Replace ROOT_A partition number with the target partition number
+      debug "No ROOT-B found in write_gpt"
       # FIXME: Rebuild write_gpt.sh
       cat "${install_plan['write_gpt_path']}" | sed \
       -e "s|^\(\s*PARTITION_NUM_ROOT_A=\)\"[0-9]\+\"$|\1\"${install_plan['target_slot_no']}\"|g" \
@@ -189,11 +209,15 @@ function PostinstallRunnerAction_CompletePostinstall {
       fi
       # Change boot priority
       # Mark the kernel as successfully booted (success=1, tries=0).
+      debug "gptpriority: partition: $part_num"
+      debug "cgpt add "${root_dev}" -i ${!part_num} -S1 -T0"
+      debug "cgpt prioritize "${root_dev}" -i ${!part_num}"
       cgpt add "${root_dev}" -i ${!part_num} -S1 -T0
       # Mark the kernel as highest priority
       cgpt prioritize "${root_dev}" -i ${!part_num}  # Boot as successful device for now
       if [ $? -ne 0 ]; then
         # Probably not EFI, try syslinux
+        debug "cgpt commands failed, trying syslinux"
         echo "DEFAULT chromeos-hd.${install_plan['target_slot_alphabet']}" > \
           "${install_plan['efi_partition']}/syslinux/default.cfg"
         if [ $? -ne 0 ]; then
@@ -240,12 +264,14 @@ function PostinstallRunnerAction_PerformPartitionPostinstall {
     # swtpm
     PostinstallRunnerAction_DetermineSWTPMSupport
     if [ "${install_plan['tpm']}" == "true" ]; then
+      debug "SWTPM support detected"
       # FIXME: Handle errors properly
       # Download swtpm
       curl -sL -o "${install_plan['swtpm_tar']}" "${install_plan['tpm_url']}" 2> /dev/null
       if [ $? -ne 0 ]; then
         echo_stderr "Failed to download swtpm.tar. Update aborted."
         rm "${install_plan['swtpm_tar']}" 2> /dev/null
+        print_env
         exit 1
       fi
       # Extract swtpm.tar
@@ -284,6 +310,7 @@ EOL
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to mount efi partition."
       rmdir "${install_plan['efi_partition']}"
+      print_env
       exit 1
     fi
     PostinstallRunnerAction_CompletePostinstall

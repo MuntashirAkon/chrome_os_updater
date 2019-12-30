@@ -32,7 +32,8 @@ function UpdateBootloaders {
     local efi_part="$5"
     # Sometimes, /boot and /boot/vmlinuz doesn't exist
     if [ ! -f "${root}/boot/vmlinuz" ]; then
-      >&2 echo "Warning: ${root}/boot or ${root}/boot/vmlinuz not found."
+      >&2 echo "${root}/boot or ${root}/boot/vmlinuz not found."
+      exit 1
     fi
     # Although documented, check if $efi_path is actually a mount point
     if ! mountpoint -q "$efi_path"; then
@@ -68,8 +69,8 @@ function UpdateBootloaders {
     local root_a_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_a_part)"
     local root_b_uuid="PARTUUID=$(/sbin/blkid -s PARTUUID -o value $root_b_part)"
     # Replace with the current values
-    sed -i "s|${root_a_val}|${root_a_uuid}|" "${grub_cfg_path}"
-    sed -i "s|${root_b_val}|${root_b_uuid}|" "${grub_cfg_path}"
+    sed -i "s|${root_b_val}|${root_b_uuid}|" "${grub_cfg_path}"  # Replace all old values with ROOT-B
+    sed -i "0,/${root_b_uuid}/s|${root_a_val}|${root_a_uuid}|" "${grub_cfg_path}"  # Replace only ROOT-A
     ### For Syslinux ###
     # Get current (now old) values
     local syslinux_path="${root}/boot/syslinux"
@@ -81,15 +82,15 @@ function UpdateBootloaders {
     sed -i "s|${root_a_val}|${root_a_uuid}|" "${root_a_path}"
     sed -i "s|${root_b_val}|${root_b_uuid}|" "${root_b_path}"
     # Copy files into place
-    rm -rf "${efi_path}"/{efi,syslinux}
+    rm -rf "${efi_path}"/efi
     cp -a "${root}"/boot/{efi,syslinux} "${efi_path}"
     # Copy the vmlinuz's into place for syslinux
     cp -f "${root}"/boot/vmlinuz "${efi_path}"/syslinux/vmlinuz.A
     cp -f "${root}"/boot/vmlinuz "${efi_path}"/syslinux/vmlinuz.B
-    # Install Syslinux loader
-    umount "${efi_path}"
-    syslinux -d /syslinux "${efi_part}"
-    mount "${efi_part}" "${efi_path}"
+    # Install Syslinux loader: skip as syslinux doesn't always work
+    #umount "${efi_path}"
+    #syslinux -d /syslinux "${efi_part}"
+    #mount "${efi_part}" "${efi_path}"
 }
 
 #

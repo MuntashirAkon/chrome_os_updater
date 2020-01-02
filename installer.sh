@@ -8,7 +8,7 @@ sudo mount -o exec,remount /tmp
 # Install crew
 crew="$(command -v crew)"
 if ! [ -x "${crew}" ]; then
-    curl -Ls https://raw.github.com/skycocker/chromebrew/master/install.sh | bash <<<Y
+    yes | bash <(curl -Ls https://raw.github.com/skycocker/chromebrew/master/install.sh)
 fi
 crew="$(command -v crew)"
 if ! [ -x "${crew}" ]; then
@@ -16,7 +16,7 @@ if ! [ -x "${crew}" ]; then
     exit 1
 fi
 # Install setup tools, python27
-"${crew}" install setuptools python27
+yes |"${crew}" install setuptools python27
 if [ $? -ne 0 ]; then
     echo "Failed to install setuptools or python 2.7!"
     exit 1

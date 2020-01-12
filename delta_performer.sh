@@ -53,6 +53,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to extract root image from update."
       delete_update_file
+      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       exit 1
@@ -63,6 +64,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to mount root image."
       delete_update_file
+      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"
@@ -75,6 +77,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
       echo_stderr "Failed to mount target partition."
       umount "${install_plan['root_mountpoint']}"
       delete_update_file
+      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"

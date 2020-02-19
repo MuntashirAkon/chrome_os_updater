@@ -115,7 +115,7 @@ function DeltaPerformer_Write {
     debug "Image contents: $(ls "${install_plan['root_mountpoint']}")"
     debug "Partition contents: $(ls "${install_plan['target_partition']}")"
     # Delete kernel modules, firmware and alsa audio config files
-    rm -rf "${install_plan['target_partition']}/lib/firmware" "${install_plan['target_partition']}/lib/modules"
+    rm -rf "${install_plan['target_partition']}"/lib/{firmware,modules}
     rm "${install_plan['target_partition']}/etc/modprobe.d"/alsa*.conf
     ## Copy required files from current to target partition
     # Copy kernel and bootloaders
@@ -123,23 +123,19 @@ function DeltaPerformer_Write {
     # Copy drivers
     cp -na /usr/lib64/{dri,va} "${install_plan['target_partition']}/usr/lib64/"
     # Copy write_gpt.sh, the partition map
-    cp -a "/usr/sbin/write_gpt.sh" "${install_plan['target_partition']}/usr/sbin"
+    cp -a {,"${install_plan['target_partition']}"}/usr/sbin/write_gpt.sh
     # Copy touchpad config as it could be modified
-    cp -a "/etc/gesture/40-touchpad-cmt.conf" "${install_plan['target_partition']}/etc/gesture"
+    cp -a {,"${install_plan['target_partition']}"}/etc/gesture/40-touchpad-cmt.conf
     # Copy chrome_dev.conf as it could be modified
-    cp -a "/etc/chrome_dev.conf" "${install_plan['target_partition']}/etc"
-    # Copy mount-internals.conf if present
-    cp -a "/etc/init/mount-internals.conf" "${install_plan['target_partition']}/etc/init" 2> /dev/null
-    # Set SELinux to permissive for Playstore support
-    sed '0,/enforcing/s/enforcing/permissive/' -i "${install_plan['target_partition']}/etc/selinux/config"
-    # Apply camera fix
-    local new_camera=`dmesg | grep uvcvideo -m 1 | awk -F '[()]' '{print $2}'`
-    local old_camera=`sed -nr 's,^camera0.module0.usb_vid_pid=(.*),\1,p'  "${install_plan['target_partition']}/etc/camera/camera_characteristics.conf"`
-    if [ -n "${new_camera}" ] && [ -n "${old_camera}" ]; then
-      sed -i -e "s/${old_camera%:*}/${new_camera%:*}/" -e "s/${old_camera##*:}/${new_camera##*:}/" "${install_plan['target_partition']}/lib/udev/rules.d/50-camera.rules"
-      sed -i "s/$old_camera/$new_camera/" "${install_plan['target_partition']}/etc/camera/camera_characteristics.conf"
-    fi
+    cp -a {,"${install_plan['target_partition']}"}/etc/chrome_dev.conf
+    # Copy SELinux config
+    cp -a {,"${install_plan['target_partition']}"}/etc/selinux/config
+    # Copy camera config
+    cp -a {,"${install_plan['target_partition']}"}/etc/camera/camera_characteristics.conf
+    cp -a {,"${install_plan['target_partition']}"}/lib/udev/rules.d/50-camera.rules
     # FIXME: Check for errors, use && for related commands to check at last and exit
+    # Copy mount-internals.conf if present
+    cp -a {,"${install_plan['target_partition']}"}/etc/init/mount-internals.conf 2> /dev/null
     DeltaPerformer_Close
 }
 

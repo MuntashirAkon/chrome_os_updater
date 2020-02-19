@@ -71,9 +71,24 @@ function DeltaPerformer_PreparePartitionsForUpdate {
       exit 1
     fi
     # mount target partition
+    if [ -z "${install_plan['target_slot']}" ]; then
+        echo_stderr "Target slot is empty!"
+        umount "${install_plan['root_mountpoint']}"
+        delete_update_file
+        print_env
+        rm "${install_plan['kernel_path']}" 2> /dev/null
+        rm "${install_plan['root_path']}" 2> /dev/null
+        rmdir "${install_plan['root_mountpoint']}"
+        exit 1
+    fi
     mkdir "${install_plan['target_partition']}"
     mount -t ext4 -o rw,exec "${install_plan['target_slot']}" "${install_plan['target_partition']}"
-    if [ $? -ne 0 ] || [ "${install_plan['target_slot']}" == "" ]; then
+    if [ $? -ne 0 ]; then
+        echo_stderr "${install_plan['target_slot']} is probably broken. Applying fix..."
+        mke2fs "${install_plan['target_slot']}"
+        mount -t ext4 -o rw,exec "${install_plan['target_slot']}" "${install_plan['target_partition']}"
+    fi
+    if [ $? -ne 0 ]; then
       echo_stderr "Failed to mount target partition."
       umount "${install_plan['root_mountpoint']}"
       delete_update_file

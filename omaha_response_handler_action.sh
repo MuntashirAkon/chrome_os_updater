@@ -23,6 +23,15 @@ kCrosUpdateConf="/usr/local/cros_update.conf" # Our conf file
 declare -A install_plan
 
 
+function GetDownloadRoot {
+    if [ -n "${CROS_DOWNLOAD_ROOT}" ]; then
+        echo "${CROS_DOWNLOAD_ROOT}"
+    else
+        echo '/usr/local/updater'
+    fi
+}
+
+
 function GetCurrentSlot {  # Actually get current /dev/sdXX
     rootdev -s 2> /dev/null
 }
@@ -123,7 +132,7 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['powerwash_required']=false  # No functionality
     # No need for deadline since we're installing right away
     # Custom paths
-    install_plan['download_root']='/usr/local/updater'  # Download root
+    install_plan['download_root']="$(GetDownloadRoot)"  # Download root
     install_plan['update_file_path']=  # Update file path/location
     install_plan['tpm_url']="https://github.com/imperador/chromefy/raw/master/swtpm.tar"
     install_plan['target_partition']=  # Target partition path

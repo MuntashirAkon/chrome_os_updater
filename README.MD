@@ -97,9 +97,22 @@ export CUSTOM_RELEASE_TRACK=dev-channel
 - beta-channel
 - stable-channel
 
+#### Custom download directory
+
+It is possible to set custom download directory for users having a small stateful partition. To do this, you need to insert an external drive (e.g. USB pen drive) with a writable file system (e.g. ext*, *fat) which has at least 4 GB free space. By default, any supported file systems are mounted using their associated label at `/media/removable` directory. So, you need to export `CROS_DOWNLOAD_ROOT` before running the updater like this:
+```sh
+export CROS_DOWNLOAD_ROOT=/media/removable/<your external drive>
+```
+
+Replace `/media/removable/<your external drive>` with the mount point of your external drive.
+
 #### Debugging
 
-`export CROS_DEBUG=y` before running the script to print debug log.
+Debugging may help sort out the error occurred during the update process. To enable debugging, you need to export `CROS_DEBUG=y` before running the updater like this:
+```sh
+export CROS_DEBUG=y
+```
+The downloaded files will be kept to save your bandwidth!
 
 ## How to revert back if something goes wrong
 

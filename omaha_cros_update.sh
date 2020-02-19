@@ -1,7 +1,5 @@
 #!/bin/bash
-# 2019 (c) Muntashir Al-Islam. All rights reserved.
-# NOTE: TPM 1.2 fix is adapted from the Chromefy project and
-# this copyright doesn't apply them.
+# 2019-2020 (c) Muntashir Al-Islam. All rights reserved.
 
 # Get script directory 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
@@ -15,34 +13,49 @@ function echo_stderr {
 
 # Print Usage
 function print_usage {
-  echo_stderr "Usage: ${0##*/} [--check-only|--help]"
+  echo_stderr "Usage: ${0##*/} [-chv]"
   echo_stderr "Run ${0##*/} without any argument to update Chrome OS"
-  echo_stderr "--check-only  Only check for update."
-  echo_stderr "--help        This help page."
+  echo_stderr " -c, --check-only  Only check for update."
+  echo_stderr " -h, --help        This help page."
+  echo_stderr " -v, --version     Print version information"
 }
 
 function main {
-    if [ "$1" == "--check-only" ]; then
-      . "$SCRIPT_DIR/omaha_request_action.sh"
-      OmahaRequestAction_TransferComplete
-      if [ ${ORA_update_exists} ]; then
-        echo_stderr "A new update is available!"
-        echo_stderr "Version: ${ORA_version}"
-        echo_stderr "Download URL: ${ORA_payload_urls[1]}"
+    case "$1" in
+      '--check-only'|'-c')
+        . "$SCRIPT_DIR/omaha_request_action.sh"
+        OmahaRequestAction_TransferComplete
+        if [ ${ORA_update_exists} ]; then
+          echo_stderr "A new update is available!"
+          echo_stderr "Version: ${ORA_version}"
+          echo_stderr "Download URL: ${ORA_payload_urls[1]}"
+          exit 0
+        fi
+        ;;
+      '--help'|'-h')
+        print_usage
         exit 0
-      fi
-    elif [ "$1" == "--help" ]; then
-      print_usage
-      exit 0
-    fi
-    if [ $UID -ne 0 ]; then
-      echo_stderr "Only root can do that."
-      exit 1
-    fi
+        ;;
+      '--version'|'-v')
+        . "$SCRIPT_DIR/version.sh"
+        echo_stderr "Version: ${OCU_VERSION}.${OCU_PATCH}"
+        exit 0
+        ;;
+      '')
+        if [ $UID -ne 0 ]; then
+          echo_stderr "Only root can do that."
+          exit 1
+        fi
 
-    . "$SCRIPT_DIR/postinstall_runner_action.sh"
-    PostinstallRunnerAction_PerformAction
-    exit 0
+        . "$SCRIPT_DIR/postinstall_runner_action.sh"
+        PostinstallRunnerAction_PerformAction
+        exit 0
+        ;;
+      *)
+        echo_stderr "Illegal option $@."
+        print_usage
+        exit 1
+    esac
 }
 
 main "$@"

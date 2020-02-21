@@ -21,8 +21,17 @@ if [ $? -ne 0 ]; then
     echo "Failed to install setuptools"
     exit 1
 fi
-# Install protobuf
+# Install pip
 pip="$(command -v pip3)"
+if ! [ -x "${pip}" ]; then
+    curl -Ls https://bootstrap.pypa.io/get-pip.py | python3
+fi
+pip="$(command -v pip3)"
+if ! [ -x "${pip}" ]; then
+    echo "Failed to install pip!"
+    exit 1
+fi
+# Install protobuf
 "${pip}" install protobuf
 if [ $? -ne 0 ]; then
     echo "Failed to install protobuf python module(s)!"

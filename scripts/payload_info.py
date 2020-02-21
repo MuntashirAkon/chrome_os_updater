@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2015 The Android Open Source Project
@@ -18,16 +18,17 @@
 
 """payload_info: Show information about an update payload."""
 
+from __future__ import absolute_import
 from __future__ import print_function
 
 import argparse
-import itertools
 import sys
 import textwrap
 
+from six.moves import range
 import update_payload
 
-MAJOR_PAYLOAD_VERSION_CHROMEOS = 1
+
 MAJOR_PAYLOAD_VERSION_BRILLO = 2
 
 def DisplayValue(key, value):
@@ -41,12 +42,12 @@ def DisplayValue(key, value):
 def DisplayHexData(data, indent=0):
   """Print out binary data as a hex values."""
   for off in range(0, len(data), 16):
-    chunk = data[off:off + 16]
+    chunk = bytearray(data[off:off + 16])
     print(' ' * indent +
-          ' '.join('%.2x' % ord(c) for c in chunk) +
+          ' '.join('%.2x' % c for c in chunk) +
           '   ' * (16 - len(chunk)) +
           ' | ' +
-          ''.join(c if 32 <= ord(c) < 127 else '.' for c in chunk))
+          ''.join(chr(c) if 32 <= c < 127 else '.' for c in chunk))
 
 
 class PayloadCommand(object):
@@ -69,15 +70,11 @@ class PayloadCommand(object):
   def _DisplayManifest(self):
     """Show information from the payload manifest."""
     manifest = self.payload.manifest
-    if self.payload.header.version == MAJOR_PAYLOAD_VERSION_BRILLO:
-      DisplayValue('Number of partitions', len(manifest.partitions))
-      for partition in manifest.partitions:
-        DisplayValue('  Number of "%s" ops' % partition.partition_name,
-                     len(partition.operations))
-    else:
-      DisplayValue('Number of operations', len(manifest.install_operations))
-      DisplayValue('Number of kernel ops',
-                   len(manifest.kernel_install_operations))
+    DisplayValue('Number of partitions', len(manifest.partitions))
+    for partition in manifest.partitions:
+      DisplayValue('  Number of "%s" ops' % partition.partition_name,
+                   len(partition.operations))
+
     DisplayValue('Block size', manifest.block_size)
     DisplayValue('Minor version', manifest.minor_version)
 
@@ -131,8 +128,8 @@ class PayloadCommand(object):
 
     Args:
       name: The name you want displayed above the operation table.
-      operations: The install_operations object that you want to display
-                  information about.
+      operations: The operations object that you want to display information
+                  about.
     """
     def _DisplayExtents(extents, name):
       """Show information about extents."""
@@ -149,7 +146,7 @@ class PayloadCommand(object):
 
     op_dict = update_payload.common.OpType.NAMES
     print('%s:' % name)
-    for op, op_count in itertools.izip(operations, itertools.count()):
+    for op_count, op in enumerate(operations):
       print('  %d: %s' % (op_count, op_dict[op.type]))
       if op.HasField('data_offset'):
         print('    Data offset: %s' % op.data_offset)
@@ -170,14 +167,9 @@ class PayloadCommand(object):
     read_blocks = 0
     written_blocks = 0
     num_write_seeks = 0
-    if self.payload.header.version == MAJOR_PAYLOAD_VERSION_BRILLO:
-      partitions_operations = [part.operations for part in manifest.partitions]
-    else:
-      partitions_operations = [manifest.install_operations,
-                               manifest.kernel_install_operations]
-    for operations in partitions_operations:
+    for partition in manifest.partitions:
       last_ext = None
-      for curr_op in operations:
+      for curr_op in partition.operations:
         read_blocks += sum([ext.num_blocks for ext in curr_op.src_extents])
         written_blocks += sum([ext.num_blocks for ext in curr_op.dst_extents])
         for curr_ext in curr_op.dst_extents:
@@ -187,15 +179,10 @@ class PayloadCommand(object):
             num_write_seeks += 1
           last_ext = curr_ext
 
-    if manifest.minor_version == 1:
-      # Rootfs and kernel are written during the filesystem copy in version 1.
-      written_blocks += manifest.old_rootfs_info.size / manifest.block_size
-      written_blocks += manifest.old_kernel_info.size / manifest.block_size
-    # Old and new rootfs and kernel are read once during verification
-    read_blocks += manifest.old_rootfs_info.size / manifest.block_size
-    read_blocks += manifest.old_kernel_info.size / manifest.block_size
-    read_blocks += manifest.new_rootfs_info.size / manifest.block_size
-    read_blocks += manifest.new_kernel_info.size / manifest.block_size
+      # Old and new partitions are read once during verification.
+      read_blocks += partition.old_partition_info.size // manifest.block_size
+      read_blocks += partition.new_partition_info.size // manifest.block_size
+
     stats = {'read_blocks': read_blocks,
              'written_blocks': written_blocks,
              'num_write_seeks': num_write_seeks}
@@ -219,21 +206,15 @@ class PayloadCommand(object):
       self._DisplayStats(self.payload.manifest)
     if self.options.list_ops:
       print()
-      if self.payload.header.version == MAJOR_PAYLOAD_VERSION_BRILLO:
-        for partition in self.payload.manifest.partitions:
-          self._DisplayOps('%s install operations' % partition.partition_name,
-                           partition.operations)
-      else:
-        self._DisplayOps('Install operations',
-                         self.payload.manifest.install_operations)
-        self._DisplayOps('Kernel install operations',
-                         self.payload.manifest.kernel_install_operations)
+      for partition in self.payload.manifest.partitions:
+        self._DisplayOps('%s install operations' % partition.partition_name,
+                         partition.operations)
 
 
 def main():
   parser = argparse.ArgumentParser(
       description='Show information about an update payload.')
-  parser.add_argument('payload_file', type=file,
+  parser.add_argument('payload_file', type=argparse.FileType('rb'),
                       help='The update payload file.')
   parser.add_argument('--list_ops', default=False, action='store_true',
                       help='List the install operations and their extents.')
@@ -244,6 +225,7 @@ def main():
   args = parser.parse_args()
 
   PayloadCommand(args).Run()
+
 
 if __name__ == '__main__':
   sys.exit(main())

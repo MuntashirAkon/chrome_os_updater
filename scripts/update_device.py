@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 #
 # Copyright (C) 2017 The Android Open Source Project
 #
@@ -17,8 +17,9 @@
 
 """Send an A/B update to an Android device over adb."""
 
+from __future__ import absolute_import
+
 import argparse
-import BaseHTTPServer
 import hashlib
 import logging
 import os
@@ -28,6 +29,8 @@ import sys
 import threading
 import xml.etree.ElementTree
 import zipfile
+
+from six.moves import BaseHTTPServer
 
 import update_payload.payload
 
@@ -40,6 +43,7 @@ PAYLOAD_KEY_PATH = '/etc/update_engine/update-payload-key.pub.pem'
 
 # The port on the device that update_engine should connect to.
 DEVICE_PORT = 1234
+
 
 def CopyFileObjLength(fsrc, fdst, buffer_size=128 * 1024, copy_length=None):
   """Copy from a file object to another.
@@ -83,24 +87,17 @@ class AndroidOTAPackage(object):
   # Android OTA package file paths.
   OTA_PAYLOAD_BIN = 'payload.bin'
   OTA_PAYLOAD_PROPERTIES_TXT = 'payload_properties.txt'
-  SECONDARY_OTA_PAYLOAD_BIN = 'secondary/payload.bin'
-  SECONDARY_OTA_PAYLOAD_PROPERTIES_TXT = 'secondary/payload_properties.txt'
 
-  def __init__(self, otafilename, secondary_payload=False):
+  def __init__(self, otafilename):
     self.otafilename = otafilename
 
     otazip = zipfile.ZipFile(otafilename, 'r')
-    payload_entry = (self.SECONDARY_OTA_PAYLOAD_BIN if secondary_payload else
-                     self.OTA_PAYLOAD_BIN)
-    payload_info = otazip.getinfo(payload_entry)
+    payload_info = otazip.getinfo(self.OTA_PAYLOAD_BIN)
     self.offset = payload_info.header_offset
     self.offset += zipfile.sizeFileHeader
     self.offset += len(payload_info.extra) + len(payload_info.filename)
     self.size = payload_info.file_size
-
-    property_entry = (self.SECONDARY_OTA_PAYLOAD_PROPERTIES_TXT if
-                      secondary_payload else self.OTA_PAYLOAD_PROPERTIES_TXT)
-    self.properties = otazip.read(property_entry)
+    self.properties = otazip.read(self.OTA_PAYLOAD_PROPERTIES_TXT)
 
 
 class UpdateHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -136,7 +133,6 @@ class UpdateHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if int(e) < file_size:
           start_range = file_size - int(e)
     return start_range, end_range
-
 
   def do_GET(self):  # pylint: disable=invalid-name
     """Reply with the requested payload file."""
@@ -179,7 +175,6 @@ class UpdateHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     f.seek(serving_start + start_range)
     CopyFileObjLength(f, self.wfile, copy_length=end_range - start_range)
-
 
   def do_POST(self):  # pylint: disable=invalid-name
     """Reply with the omaha response xml."""
@@ -285,9 +280,9 @@ def StartServer(ota_filename, serving_range):
   return t
 
 
-def AndroidUpdateCommand(ota_filename, secondary, payload_url, extra_headers):
+def AndroidUpdateCommand(ota_filename, payload_url, extra_headers):
   """Return the command to run to start the update in the Android device."""
-  ota = AndroidOTAPackage(ota_filename, secondary)
+  ota = AndroidOTAPackage(ota_filename)
   headers = ota.properties
   headers += 'USER_AGENT=Dalvik (something, something)\n'
   headers += 'NETWORK_ID=0\n'
@@ -370,8 +365,6 @@ def main():
                       help='Override the public key used to verify payload.')
   parser.add_argument('--extra-headers', type=str, default='',
                       help='Extra headers to pass to the device.')
-  parser.add_argument('--secondary', action='store_true',
-                      help='Update with the secondary payload in the package.')
   args = parser.parse_args()
   logging.basicConfig(
       level=logging.WARNING if args.no_verbose else logging.INFO)
@@ -407,7 +400,7 @@ def main():
     # command.
     payload_url = 'http://127.0.0.1:%d/payload' % DEVICE_PORT
     if use_omaha and zipfile.is_zipfile(args.otafile):
-      ota = AndroidOTAPackage(args.otafile, args.secondary)
+      ota = AndroidOTAPackage(args.otafile)
       serving_range = (ota.offset, ota.size)
     else:
       serving_range = (0, os.stat(args.otafile).st_size)
@@ -435,8 +428,8 @@ def main():
       update_cmd = \
           OmahaUpdateCommand('http://127.0.0.1:%d/update' % DEVICE_PORT)
     else:
-      update_cmd = AndroidUpdateCommand(args.otafile, args.secondary,
-                                        payload_url, args.extra_headers)
+      update_cmd = \
+          AndroidUpdateCommand(args.otafile, payload_url, args.extra_headers)
     cmds.append(['shell', 'su', '0'] + update_cmd)
 
     for cmd in cmds:
@@ -450,6 +443,7 @@ def main():
       dut.adb(cmd)
 
   return 0
+
 
 if __name__ == '__main__':
   sys.exit(main())

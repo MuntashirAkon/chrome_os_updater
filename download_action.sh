@@ -18,7 +18,7 @@ function DownloadAction_TransferComplete {
     #       However, we don't actually need to download both of them.
     # Verify payload using paycheck.py
     echo_stderr "Verifying download..."
-    python "$SCRIPT_DIR/scripts/paycheck.py" -c "${install_plan['update_file_path']}"
+    python3 "$SCRIPT_DIR/scripts/paycheck.py" -c "${install_plan['update_file_path']}"
     if [ $? -ne 0 ]; then
       echo_stderr "Download of ${install_plan['download_url']} failed due to payload verification error."
       rm "${install_plan['update_file_path']}"

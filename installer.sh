@@ -15,32 +15,17 @@ if ! [ -x "${crew}" ]; then
     echo "Failed to install crew!"
     exit 1
 fi
-# Install setup tools, python27
-yes |"${crew}" install setuptools python27
+# Install setup tools
+yes | "${crew}" install setuptools
 if [ $? -ne 0 ]; then
-    echo "Failed to install setuptools or python 2.7!"
-    exit 1
-fi
-# Install pip
-pip="$(command -v pip2.7)"
-if ! [ -x "${pip}" ]; then
-    curl -Ls https://bootstrap.pypa.io/get-pip.py | python2.7
-fi
-pip="$(command -v pip2.7)"
-if ! [ -x "${pip}" ]; then
-    echo "Failed to install pip!"
+    echo "Failed to install setuptools"
     exit 1
 fi
 # Install protobuf
+pip="$(command -v pip3)"
 "${pip}" install protobuf
 if [ $? -ne 0 ]; then
     echo "Failed to install protobuf python module(s)!"
-    exit 1
-fi
-# Install lzma
-"${pip}" install backports.lzma
-if [ $? -ne 0 ]; then
-    echo "Failed to install lzma python module(s)!"
     exit 1
 fi
 ## Install chrome_os_updater

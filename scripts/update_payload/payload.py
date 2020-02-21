@@ -16,6 +16,7 @@
 
 """Tools for reading, verifying and applying Chrome OS update payloads."""
 
+from __future__ import absolute_import
 from __future__ import print_function
 
 import hashlib
@@ -64,7 +65,7 @@ class Payload(object):
     """Update payload header struct."""
 
     # Header constants; sizes are in bytes.
-    _MAGIC = 'CrAU'
+    _MAGIC = b'CrAU'
     _VERSION_SIZE = 8
     _MANIFEST_LEN_SIZE = 8
     _METADATA_SIGNATURE_LEN_SIZE = 4
@@ -110,7 +111,6 @@ class Payload(object):
         self.metadata_signature_len = _ReadInt(
             payload_file, self._METADATA_SIGNATURE_LEN_SIZE, True,
             hasher=hasher)
-
 
   def __init__(self, payload_file, payload_file_offset=0):
     """Initialize the payload object.
@@ -263,9 +263,7 @@ class Payload(object):
   def IsDelta(self):
     """Returns True iff the payload appears to be a delta."""
     self._AssertInit()
-    return (self.manifest.HasField('old_kernel_info') or
-            self.manifest.HasField('old_rootfs_info') or
-            any(partition.HasField('old_partition_info')
+    return (any(partition.HasField('old_partition_info')
                 for partition in self.manifest.partitions))
 
   def IsFull(self):

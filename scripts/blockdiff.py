@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 #
 # Copyright (C) 2013 The Android Open Source Project
 #
@@ -17,6 +17,7 @@
 
 """Block diff utility."""
 
+from __future__ import absolute_import
 from __future__ import print_function
 
 # pylint: disable=import-error
@@ -46,7 +47,7 @@ def BlockDiff(block_size, file1, file2, name1, name2, max_length=-1):
 
   """
   if max_length < 0:
-    max_length = sys.maxint
+    max_length = sys.maxsize
   diff_list = []
   num_blocks = extent_start = extent_length = 0
   while max_length or extent_length:

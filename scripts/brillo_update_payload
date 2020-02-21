@@ -28,16 +28,12 @@
 #  check       verify a payload using paycheck (static testing)
 #
 #  Generate command arguments:
-#  --payload                  generated unsigned payload output file
-#  --source_image             if defined, generate a delta payload from the
-#                             specified image to the target_image
-#  --target_image             the target image that should be sent to clients
-#  --metadata_size_file       if defined, generate a file containing the size
-#                             of the ayload metadata in bytes to the specified
-#                             file
-#  --disable_fec_computation  Disable the on device fec data computation for
-#                             incremental update. This feature is enabled by
-#                             default
+#  --payload             generated unsigned payload output file
+#  --source_image        if defined, generate a delta payload from the specified
+#                        image to the target_image
+#  --target_image        the target image that should be sent to clients
+#  --metadata_size_file  if defined, generate a file containing the size of the
+#                        payload metadata in bytes to the specified file
 #
 #  Hash command arguments:
 #  --unsigned_payload    the input unsigned payload to generate the hash from
@@ -186,9 +182,6 @@ if [[ "${COMMAND}" == "generate" ]]; then
     "Optional: The maximum unix timestamp of the OS allowed to apply this \
 payload, should be set to a number higher than the build timestamp of the \
 system running on the device, 0 if not specified."
-  DEFINE_string disable_fec_computation "" \
-    "Optional: Disables the on device fec data computation for incremental \
-update. This feature is enabled by default."
 fi
 if [[ "${COMMAND}" == "hash" || "${COMMAND}" == "sign" ]]; then
   DEFINE_string unsigned_payload "" "Path to the input unsigned payload."
@@ -255,9 +248,6 @@ declare -A DST_PARTITIONS_MAP
 # List of partition names in order.
 declare -a PARTITIONS_ORDER
 
-# A list of PIDs of the extract_image workers.
-EXTRACT_IMAGE_PIDS=()
-
 # A list of temporary files to remove during cleanup.
 CLEANUP_FILES=()
 
@@ -281,7 +271,7 @@ read_option_uint() {
   local option_key="$2"
   local default_value="${3:-}"
   local value
-  if value=$(grep "^${option_key}=" "${file_txt}" | tail -n 1); then
+  if value=$(look "${option_key}=" "${file_txt}" | tail -n 1); then
     if value=$(echo "${value}" | cut -f 2- -d "=" | grep -E "^[0-9]+$"); then
       echo "${value}"
       return
@@ -334,25 +324,6 @@ cleanup_on_exit() {
 trap cleanup_on_error INT TERM ERR
 trap cleanup_on_exit EXIT
 
-# extract_file <zip_file> <entry_name> <destination>
-#
-# Extracts |entry_name| from |zip_file| to |destination|.
-extract_file() {
-  local zip_file="$1"
-  local entry_name="$2"
-  local destination="$3"
-
-  # unzip -p won't report error upon ENOSPC. Therefore, create a temp directory
-  # as the destination of the unzip, and move the file to the intended
-  # destination.
-  local output_directory=$(
-    mktemp --directory --tmpdir="${FLAGS_work_dir}" "TEMP.XXXXXX")
-  unzip "${zip_file}" "${entry_name}" -d "${output_directory}" ||
-    { rm -rf "${output_directory}"; die "Failed to extract ${entry_name}"; }
-
-  mv "${output_directory}/${entry_name}" "${destination}"
-  rm -rf "${output_directory}"
-}
 
 # extract_image <image> <partitions_array> [partitions_order]
 #
@@ -443,7 +414,7 @@ extract_partition_brillo() {
     fi
   done
   [[ -n "${path_in_zip}" ]] || die "Failed to find ${part}.img"
-  extract_file "${image}" "${path_in_zip}/${part}.img" "${part_file}"
+  unzip -p "${image}" "${path_in_zip}/${part}.img" >"${part_file}"
 
   # If the partition is stored as an Android sparse image file, we need to
   # convert them to a raw image for the update.
@@ -457,9 +428,8 @@ extract_partition_brillo() {
   fi
 
   # Extract the .map file (if one is available).
-  if unzip -l "${image}" "${path_in_zip}/${part}.map" > /dev/null; then
-    extract_file "${image}" "${path_in_zip}/${part}.map" "${part_map_file}"
-  fi
+  unzip -p "${image}" "${path_in_zip}/${part}.map" >"${part_map_file}" \
+    2>/dev/null || true
 
   # delta_generator only supports images multiple of 4 KiB. For target images
   # we pad the data with zeros if needed, but for source images we truncate
@@ -493,8 +463,7 @@ extract_image_brillo() {
   local ab_partitions_list
   ab_partitions_list=$(create_tempfile "ab_partitions_list.XXXXXX")
   CLEANUP_FILES+=("${ab_partitions_list}")
-  if unzip -l "${image}" "META/ab_partitions.txt" > /dev/null; then
-    extract_file "${image}" "META/ab_partitions.txt" "${ab_partitions_list}"
+  if unzip -p "${image}" "META/ab_partitions.txt" >"${ab_partitions_list}"; then
     if grep -v -E '^[a-zA-Z0-9_-]*$' "${ab_partitions_list}" >&2; then
       die "Invalid partition names found in the partition list."
     fi
@@ -519,9 +488,8 @@ extract_image_brillo() {
     # Source image
     local ue_config=$(create_tempfile "ue_config.XXXXXX")
     CLEANUP_FILES+=("${ue_config}")
-    if unzip -l "${image}" "META/update_engine_config.txt" > /dev/null; then
-      extract_file "${image}" "META/update_engine_config.txt" "${ue_config}"
-    else
+    if ! unzip -p "${image}" "META/update_engine_config.txt" \
+        >"${ue_config}"; then
       warn "No update_engine_config.txt found. Assuming pre-release image, \
 using payload minor version 2"
     fi
@@ -542,16 +510,14 @@ Disabling deltas for this source version."
     # Target image
     local postinstall_config=$(create_tempfile "postinstall_config.XXXXXX")
     CLEANUP_FILES+=("${postinstall_config}")
-    if unzip -l "${image}" "META/postinstall_config.txt" > /dev/null; then
-      extract_file "${image}" "META/postinstall_config.txt" \
-        "${postinstall_config}"
+    if unzip -p "${image}" "META/postinstall_config.txt" \
+        >"${postinstall_config}"; then
       POSTINSTALL_CONFIG_FILE="${postinstall_config}"
     fi
     local dynamic_partitions_info=$(create_tempfile "dynamic_partitions_info.XXXXXX")
     CLEANUP_FILES+=("${dynamic_partitions_info}")
-    if unzip -l "${image}" "META/dynamic_partitions_info.txt" > /dev/null; then
-      extract_file "${image}" "META/dynamic_partitions_info.txt" \
-        "${dynamic_partitions_info}"
+    if unzip -p "${image}" "META/dynamic_partitions_info.txt" \
+        >"${dynamic_partitions_info}"; then
       DYNAMIC_PARTITION_INFO_FILE="${dynamic_partitions_info}"
     fi
   fi
@@ -564,7 +530,6 @@ Disabling deltas for this source version."
     # Extract partitions in background.
     extract_partition_brillo "${image}" "${partitions_array}" "${part}" \
         "${part_file}" "${part_map_file}" &
-    EXTRACT_IMAGE_PIDS+=("$!")
     eval "${partitions_array}[\"${part}\"]=\"${part_file}\""
     eval "${partitions_array}_MAP[\"${part}\"]=\"${part_map_file}\""
   done
@@ -594,12 +559,8 @@ extract_payload_images() {
     extract_image "${FLAGS_source_image}" SRC_PARTITIONS
   fi
   extract_image "${FLAGS_target_image}" DST_PARTITIONS PARTITIONS_ORDER
-  # Wait for all subprocesses to finish. Not using `wait` since it doesn't die
-  # on non-zero subprocess exit code. Not using `wait ${EXTRACT_IMAGE_PIDS[@]}`
-  # as it gives the status of the last process it has waited for.
-  for pid in ${EXTRACT_IMAGE_PIDS[@]}; do
-    wait ${pid}
-  done
+  # Wait for all subprocesses.
+  wait
   cleanup_partition_array SRC_PARTITIONS
   cleanup_partition_array SRC_PARTITIONS_MAP
   cleanup_partition_array DST_PARTITIONS
@@ -662,10 +623,6 @@ cmd_generate() {
     )
     if [[ -n "${FORCE_MINOR_VERSION}" ]]; then
       GENERATOR_ARGS+=( --minor_version="${FORCE_MINOR_VERSION}" )
-    fi
-    if [[ -n "${FLAGS_disable_fec_computation}" ]]; then
-      GENERATOR_ARGS+=(
-        --disable_fec_computation="${FLAGS_disable_fec_computation}" )
     fi
   fi
 

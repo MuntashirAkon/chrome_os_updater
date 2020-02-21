@@ -1,0 +1,3 @@
+yes | crew install pygobject2 pygobject dbus_glib
+pip3 install PyGObject dbus-python
+crew remove dbus

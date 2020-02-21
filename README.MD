@@ -2,6 +2,8 @@
 
 Update Chrome OS on regular PCs
 
+**NOTICE:** The main repository became unstable once again. Please, install using the installer found in the [latest release](https://github.com/MuntashirAkon/chrome_os_updater/releases/latest) instead of the one given here.
+
 <details>
  <summary>Index</summary>
  

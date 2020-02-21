@@ -5,7 +5,7 @@
 # fetched at 30 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 . "$SCRIPT_DIR/omaha_response_handler_action.sh"

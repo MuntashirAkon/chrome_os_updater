@@ -1,7 +1,7 @@
 #!/bin/bash
 # 2019-2020 (c) Muntashir Al-Islam. All rights reserved.
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 #
@@ -24,6 +24,7 @@ function main {
     case "$1" in
       '--check-only'|'-c')
         . "$SCRIPT_DIR/omaha_request_action.sh"
+        OmahaRequestParams_Init
         OmahaRequestAction_TransferComplete
         if [ ${ORA_update_exists} ]; then
           echo_stderr "A new update is available!"
@@ -48,6 +49,7 @@ function main {
         fi
 
         . "$SCRIPT_DIR/postinstall_runner_action.sh"
+        OmahaRequestParams_Init
         PostinstallRunnerAction_PerformAction
         exit 0
         ;;

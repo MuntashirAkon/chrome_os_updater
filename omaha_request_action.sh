@@ -264,5 +264,5 @@ function OmahaRequestAction_TransferComplete {
     # Don't need to check stupid ping values!
     OmahaRequestAction_ParseResponse  # set ORA_ vars
     ORA_update_exists=true
-    # No need to check ShouldIgnoreUpdate()   
+    # No need to check ShouldIgnoreUpdate()
 }

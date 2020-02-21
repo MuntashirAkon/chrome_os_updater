@@ -49,7 +49,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     install_plan['root_path']="${install_plan['download_root']}/root.img"
     install_plan['root_mountpoint']="${install_plan['download_root']}/root"
     install_plan['target_partition']="${install_plan['download_root']}/target_root"
-    python3 "$SCRIPT_DIR/scripts/paycheck.py" "${install_plan['update_file_path']}" --out_dst_part_paths  "${install_plan['kernel_path']}" "${install_plan['root_path']}" --part-names kernel root
+    python3 "$SCRIPT_DIR/scripts/paycheck.py" "${install_plan['update_file_path']}" --out_dst_part_paths "${install_plan['kernel_path']}" "${install_plan['root_path']}" --part_names kernel root
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to extract root image from update."
       delete_update_file

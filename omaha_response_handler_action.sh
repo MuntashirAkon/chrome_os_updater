@@ -5,7 +5,7 @@
 # fetched at 30 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 . "$SCRIPT_DIR/omaha_request_action.sh"
@@ -38,7 +38,7 @@ function GetCurrentSlot {  # Actually get current /dev/sdXX
 
 
 # $1: Label
-# $2: Device root (e.g. /dev/sd%D) 
+# $2: Device root (e.g. /dev/sd%D)
 function FindPartitionByLabel {
     local label=$1
     local root_dev=$2
@@ -73,7 +73,6 @@ function GetPartitionFromUUID {
 # OmahaResponseHandlerAction::PerformAction
 #
 function OmahaResponseHandlerAction_PerformAction {
-    OmahaRequestAction_TransferComplete  # Make the request, probably need to move somewhere else
     if ! [ ${ORA_update_exists} ]; then
       echo_stderr "There are no updates. Aborting."
       exit 1

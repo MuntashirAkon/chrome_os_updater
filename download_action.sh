@@ -51,8 +51,6 @@ function DownloadAction_StartDownloading {
       echo_stderr "Failed to download ${ORA_package_name}. Try again."
       exit 1
     fi
-    # TODO: match checksum
-    DownloadAction_TransferComplete
 }
 
 
@@ -60,7 +58,6 @@ function DownloadAction_StartDownloading {
 # DownloadAction::PerformAction
 #
 function DownloadAction_PerformAction {
-    OmahaResponseHandlerAction_PerformAction
     # TODO: MarkSlotUnbootable
     if [[ "$1" == "1" ]]; then exit 1; fi
     DownloadAction_StartDownloading

@@ -1,17 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # 2019 (c) Muntashir Al-Islam. All rights reserved.
 # Idea taken from: https://github.com/freedesktop/dbus-python/tree/f8ffd3ab796ae622912b243c1e6f1d3e12c90ad7/examples
 # Documentation: https://chromium.googlesource.com/aosp/platform/system/update_engine/+/master/dbus_service.h
 #                https://chromium.googlesource.com/aosp/platform/system/update_engine/+/a1f4a7dcaa921fcb0ab395214a9558a62ca083f2/dbus_bindings/org.chromium.UpdateEngineInterface.dbus-xml
 # Quick commands:
-# Launch update_engine: sudo python ./update_engine.py
+# Launch update_engine: sudo python3 ./update_engine.py
+# Launch common_service daemon: sudo bash ./common_service.sh
 # Monitor dbus: sudo dbus-monitor --system "interface='org.chromium.UpdateEngineInterface'"
-# ChromeOS update checks: (found so far)
-# - AttemptUpdateWithFlags("", "", 0)
-# - Signal: StatusUpdate(0, 0, "UPDATE_STATUS_DISABLED", "0.0.0.0", 0)
-# - Singal: StatusUpdateAdvanced([18 09 22 07 30 2e 30 2e 30 2e 30 40 f1 b1 ff ff ff ff ff ff ff 01])
-# - Signal: StatusUpdate(0, 0, "UPDATE_STATUS_DISABLED", "0.0.0.0", 0)
-# - Signal: StatusUpdateAdvanced([22 07 30 2e 30 2e 30 2e 30 40 f1 b1 ff ff ff ff ff ff ff 01])
+# TODO: Run common_service.sh from update_engine.py
+# TODO: Use python-daemon to daemonize update_engine
+# TODO: Run only a single instance of update_engine and common_service
+# TODO: Replace bash with python (part of Roadmap)
+
 usage = """A/B Update Engine
 
   --foreground  (Don't daemon()ize; run in foreground.)  type: bool  default: false
@@ -30,6 +30,8 @@ import subprocess
 import sys
 import google.protobuf
 from pathlib import Path
+import os
+import time
 
 import commons as UE
 from update_engine_pb2 import StatusResult
@@ -37,21 +39,40 @@ from update_engine_pb2 import StatusResult
 # Constants
 UE_DIR = str(Path(__file__).parent.absolute().parent)
 SH_SERVICE_PATH = UE_DIR + "/common_service.sh"
+UE_OUT = '/tmp/update-engine-output'
+UE_LOCK = '/tmp/update-engine-lock'
+TIMEOUT = 10*20  # 10 sec
+INTERVAL = 0.05  # 500 ms
 
 # Conversions
 boolToString=['false', 'true']
 
 stringToBool={'true': True, 'false': False}
 
-#
-# Fetch values from bash script
-#
-def BashToPython(arguments_as_array, function=None):
-    if function is None:
-        function = sys._getframe().f_back.f_code.co_name
-    command = ["bash", SH_SERVICE_PATH, function] + arguments_as_array
-    process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    return process.stdout.read().strip().decode('utf-8')
+def waitAndReadOutput():
+    lock_file = "{}-{:.6f}".format(UE_LOCK, time.time())
+    open(lock_file, 'a').close()
+    print("Lock created")
+    end_time = time.time() + TIMEOUT
+    while time.time() <= end_time:
+        if os.path.exists(UE_OUT):
+            f = open(UE_OUT, 'r')
+            line = f.readline()
+            f.close()
+            os.remove(UE_OUT)
+            os.remove(lock_file)
+            print(line)
+            print("Lock removed")
+            print(time.time())
+            return line.strip()
+        else:
+            time.sleep(INTERVAL)
+    if os.path.exists(UE_OUT): os.remove(UE_OUT)
+    if os.path.exists(lock_file):
+        os.remove(lock_file)
+        print("Lock removed")
+    print("TIMEOUT")
+    return ""
 
 #
 # The update engine class
@@ -59,15 +80,14 @@ def BashToPython(arguments_as_array, function=None):
 class UpdateEngine(dbus.service.Object):
     def __init__(self, conn, object_path=UE.PATH):
         dbus.service.Object.__init__(self, conn, object_path)
+        self.bus = conn
 
     @dbus.service.method(UE.INTERFACE)
     def AttemptUpdate(self, in_app_version, in_omaha_url): # s, s
-        BashToPython([ in_app_version, in_omaha_url ])
         return None
     
     @dbus.service.method(UE.INTERFACE)
     def AttemptUpdateWithFlags(self, in_app_version, in_omaha_url, in_flags): # s, s, i
-        BashToPython([ in_app_version, in_omaha_url, str(in_flags) ])
         return None
 
     @dbus.service.method(UE.INTERFACE)
@@ -80,23 +100,22 @@ class UpdateEngine(dbus.service.Object):
     
     @dbus.service.method(UE.INTERFACE)
     def CanRollback(self): # -> b
-        return stringToBool[BashToPython([])]
+        return stringToBool[waitAndReadOutput()]
     
     @dbus.service.method(UE.INTERFACE)
     def ResetStatus(self):
-        BashToPython([])
         return None
 
     # deprecated
     @dbus.service.method(UE.INTERFACE)
     def GetStatus(self): # -> (x, d, s, s, x)
-        outStr = BashToPython([]).split(" ")
+        outStr = waitAndReadOutput().split(" ")
         # (out_last_checked_time, out_progress, out_current_operation, out_new_version, out_new_size)
         return (dbus.Int64(outStr[0]), dbus.Double(outStr[1]), dbus.String(outStr[2]), dbus.String(outStr[3]), dbus.Int64(outStr[4]))
 
     @dbus.service.method(UE.INTERFACE)
     def GetStatusAdvanced(self): # -> ay
-        outStr = BashToPython([]).split(" ")
+        outStr = waitAndReadOutput().split(" ")
         # (last_checked_time, progress, current_operation, new_version, new_size, is_enterprise_rollback, is_install, eol_date)
         res = StatusResult()
         res.last_checked_time = int(outStr[0])
@@ -111,17 +130,15 @@ class UpdateEngine(dbus.service.Object):
 
     @dbus.service.method(UE.INTERFACE)
     def RebootIfNeeded(self):
-        BashToPython([])
         return None
 
     @dbus.service.method(UE.INTERFACE)
     def SetChannel(self, in_target_channel, in_is_powerwash_allowed): # s, b
-        BashToPython([ in_target_channel, boolToString[in_is_powerwash_allowed] ])
         return None
 
     @dbus.service.method(UE.INTERFACE)
     def GetChannel(self, in_get_current_channel): # b -> s
-        return BashToPython([ boolToString[in_get_current_channel] ])
+        return waitAndReadOutput()
 
     @dbus.service.method(UE.INTERFACE)
     def SetCohortHint(self, in_cohort_hint): # s
@@ -166,15 +183,15 @@ class UpdateEngine(dbus.service.Object):
 
     @dbus.service.method(UE.INTERFACE)
     def GetPrevVersion(self): # -> s
-        return BashToPython([])
+        return waitAndReadOutput()
     
     @dbus.service.method(UE.INTERFACE)
     def GetRollbackPartition(self): # -> s
-        return BashToPython([])
+        return waitAndReadOutput()
     
     @dbus.service.method(UE.INTERFACE)
     def GetLastAttemptError(self): # -> i
-        return int(BashToPython([]))
+        return int(waitAndReadOutput())
     
     @dbus.service.method(UE.INTERFACE)
     def GetEolStatus(self, out_eol_status): # -> i
@@ -184,13 +201,14 @@ class UpdateEngine(dbus.service.Object):
 if __name__ == '__main__':
     try:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    
+
         bus = dbus.SystemBus()
         name = dbus.service.BusName(UE.SERVICE, bus)
         object = UpdateEngine(bus)
-    
+
         loop = GLib.MainLoop()
         print("A/B Update Engine")
+        if os.path.exists(UE_OUT): os.remove(UE_OUT)
         # print usage
         loop.run()
     except dbus.DBusException:

@@ -5,8 +5,6 @@
 # fetched at 28 Jun 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-. "$SCRIPT_DIR/omaha_request_params.sh"
-
 # List of custom pair tags that we interpret in the Omaha Response:
 kTagDeadline="deadline"
 kTagDisablePayloadBackoff="DisablePayloadBackoff"

@@ -7,9 +7,6 @@
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-. "${SCRIPT_DIR}/image_properties.sh"
-
-
 #
 # Echo to stderr
 #
@@ -200,7 +197,7 @@ function OmahaRequestParams_Init {
   in_interactive="$3"
   
   echo_stderr "Initializing parameters for this update attempt"
-  
+
   LoadImageProperties
   LoadMutableImageProperties
   

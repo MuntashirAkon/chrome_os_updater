@@ -23,6 +23,12 @@ function print_usage {
 function main {
     case "$1" in
       '--check-only'|'-c')
+        if [ $UID -ne 0 ]; then
+          echo_stderr "Only root can do that."
+          exit 1
+        fi
+        . "${SCRIPT_DIR}/image_properties.sh"
+        . "$SCRIPT_DIR/omaha_request_params.sh"
         . "$SCRIPT_DIR/omaha_request_action.sh"
         OmahaRequestParams_Init
         OmahaRequestAction_TransferComplete
@@ -47,9 +53,14 @@ function main {
           echo_stderr "Only root can do that."
           exit 1
         fi
-
+        . "${SCRIPT_DIR}/image_properties.sh"
+        . "$SCRIPT_DIR/omaha_request_params.sh"
         . "$SCRIPT_DIR/postinstall_runner_action.sh"
         OmahaRequestParams_Init
+        OmahaRequestAction_TransferComplete
+        OmahaResponseHandlerAction_PerformAction
+        DownloadAction_PerformAction
+        DownloadAction_TransferComplete
         PostinstallRunnerAction_PerformAction
         exit 0
         ;;

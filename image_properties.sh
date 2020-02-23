@@ -78,7 +78,7 @@ function LoadImageProperties {
   ImageProperties['product_id']="$(GetStringWithDefault $kLsbReleaseBoardAppIdKey $release_app_id)"
   ImageProperties['canary_product_id']="$(GetStringWithDefault $kLsbReleaseCanaryAppIdKey $release_app_id)"
   ImageProperties['board']="$(GetStringWithDefault $kLsbReleaseBoardKey "")"
-  ImageProperties['version']="$(GetStringWithDefault $kLsbReleaseVersionKey "")"
+  ImageProperties['version']=$(GetStringWithDefault $kLsbReleaseVersionKey "")
   ImageProperties['omaha_url']="$(GetStringWithDefault $kLsbReleaseAutoUpdateServerKey $kOmahaDefaultProductionURL)"
   ImageProperties['build_fingerprint']=""
   ImageProperties['allow_arbitrary_channels']="false"
@@ -88,13 +88,14 @@ function LoadMutableImageProperties {
   LoadLsbRelease $LsbReleaseSource_kSystem
   LoadLsbRelease $LsbReleaseSource_kStateful
   ImageProperties['target_channel']="$(GetStringWithDefault $kLsbReleaseUpdateChannelKey "stable-channel")"
-  ImageProperties['is_powerwash_allowed']="$(GetStringWithDefault $kLsbReleaseUpdateChannelKey "false")"
+  ImageProperties['is_powerwash_allowed']="$(GetStringWithDefault $kLsbReleaseIsPowerwashAllowedKey "false")"
 }
 
 function StoreMutableImageProperties {
-  local path="${root_prefix}${kStatefulPartition}${kLsbRelease}"
-  mkdir -p "${root_prefix}${kStatefulPartition}/etc"
+  local path="${root_prefix}/${kStatefulPartition}/${kLsbRelease}"
+  mkdir -p "${root_prefix}/${kStatefulPartition}/etc"
   echo -e "${kLsbReleaseUpdateChannelKey}=${ImageProperties['target_channel']}\n${kLsbReleaseIsPowerwashAllowedKey}=${ImageProperties['is_powerwash_allowed']}" > "${path}"
+  chmod 644 $path  # Make readable for all
   if [ $? -eq 0 ]; then echo "true"; else echo "false"; fi
 }
 

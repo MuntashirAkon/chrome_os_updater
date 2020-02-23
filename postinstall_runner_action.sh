@@ -6,11 +6,13 @@
 # fetched at 23 December 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 . "$SCRIPT_DIR/download_action.sh"
 . "$SCRIPT_DIR/delta_performer.sh"
+
+PostinstallRunnerAction_update_complete=false
 
 function debug {
     if [ $CROS_DEBUG ]; then
@@ -194,7 +196,7 @@ function PostinstallRunnerAction_CompletePostinstall {
         PostinstallRunnerAction_Cleanup
         exit 1
       fi
-    fi  
+    fi
     if ! ( grep -qE "_(KERN_(A|B)|2|4)" /usr/sbin/write_gpt.sh || \
       ( FindPartitionByLabel "KERN-A" | grep -q $root_dev && \
       FindPartitionByLabel "KERN-B" | grep -q $root_dev ) ); then  # Situation#2
@@ -320,13 +322,12 @@ EOL
 # PostinstallRunnerAction::PerformAction
 #
 function PostinstallRunnerAction_PerformAction {
-    # Download
-    DownloadAction_PerformAction
     # Install update
     DeltaPerformer_Write
     # Run post install
     PostinstallRunnerAction_PerformPartitionPostinstall
     echo_stderr "Update is successfully installed. Please reboot to continue."
+    PostinstallRunnerAction_update_complete="true"
 }
 
 

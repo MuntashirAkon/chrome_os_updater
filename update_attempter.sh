@@ -8,7 +8,9 @@
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+# Don't ever break the sequence!
 . "${SCRIPT_DIR}/update_status.py"
+. "${SCRIPT_DIR}/image_properties.sh"
 . "${SCRIPT_DIR}/omaha_request_params.sh"
 . "${SCRIPT_DIR}/power_manager.sh"
 . "${SCRIPT_DIR}/boot_control_chromeos.sh"
@@ -213,9 +215,73 @@ function UpdateAttempter_CalculateUpdateParams {
 function UpdateAttempter_BuildUpdateActions {
   # TODO: processor_->IsRunning()
   # Check for update and apply if available
-  . "$SCRIPT_DIR/postinstall_runner_action.sh"
-  # OmahaRequestAction_TransferComplete
+  . "$SCRIPT_DIR/omaha_request_action.sh"
+  . "$SCRIPT_DIR/omaha_response_handler_action.sh"
+  . "$SCRIPT_DIR/download_action.sh"
+  . "$SCRIPT_DIR/delta_performer.sh"
+  OmahaRequestAction_TransferComplete
+
+  # Send signal: UPDATE_AVAILABLE?
+  if [ ${ORA_update_exists} ]; then
+    status_=${UPDATE_AVAILABLE}
+    new_payload_size_=${ORA_size:-0}
+    new_version_=${ORA_version:-'0.0.0.0'}
+    UpdateAttempter_GetStatus
+    BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+    echo $(UpdateStatusToString $status)
+  else
+    status_=${REPORTING_ERROR_EVENT}
+    UpdateAttempter_GetStatus
+    BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+    echo $(UpdateStatusToString $status)
+    return 1
+  fi
+  
+  if ! $is_install; then
+    return 0
+  fi
+
+  OmahaResponseHandlerAction_PerformAction
+  # TODO: Run checks
+
+  # Send signal: DOWNLOADING
+  status_=${DOWNLOADING}
+  UpdateAttempter_GetStatus
+  BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+  echo $(UpdateStatusToString $status)
+
+  DownloadAction_PerformAction
+  # TODO: Check if the update is downloaded properly
+
+  # Send signal: VERIFYING
+  status_=${VERIFYING}
+  UpdateAttempter_GetStatus
+  BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+  echo $(UpdateStatusToString $status)
+
+  DownloadAction_TransferComplete
+  # TODO: Check if the verification is completed properly
+
+  # Send signal: FINALIZING
+  status_=${FINALIZING}
+  UpdateAttempter_GetStatus
+  BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+  echo $(UpdateStatusToString $status)
+  
   PostinstallRunnerAction_PerformAction
+
+  if [ ${PostinstallRunnerAction_update_complete} ]; then
+    status_=${UPDATED_NEED_REBOOT}
+    UpdateAttempter_GetStatus
+    BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+    echo $(UpdateStatusToString $status)
+  else
+    status_=${REPORTING_ERROR_EVENT}
+    UpdateAttempter_GetStatus
+    BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+    echo $(UpdateStatusToString $status)
+    return 1
+  fi
   return 0
 }
 
@@ -231,13 +297,24 @@ function UpdateAttempter_Update {
   if ! [ "${status_}" == "${IDLE}" ]; then
     return 1
   fi
+
+  # Send signal: CHECKING_FOR_UPDATE
+  status_=${CHECKING_FOR_UPDATE}
+  UpdateAttempter_GetStatus
+  BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+  echo $(UpdateStatusToString $status)
+
   if ! UpdateAttempter_CalculateUpdateParams; then
     return 1
   fi
+  
   UpdateAttempter_BuildUpdateActions
-
+  
+  # Send signal: UPDATED_NEED_REBOOT
+  status_=${UPDATED_NEED_REBOOT}
+  UpdateAttempter_GetStatus
   BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
-
+  echo $(UpdateStatusToString $status)
 }
 
 
@@ -258,8 +335,9 @@ function UpdateAttempter_CheckForUpdate {
   local omaha_url="$2"
   local flags="$3"
   
-  UpdateAttempter_GetStatus
-  BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
+  # Send signal: default status
+  #UpdateAttempter_GetStatus
+  #BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
     
   if ! [ "${status_}" == "${IDLE}" ]; then
     >&2 echo "Refusing to do an update as there already an update/install in progress"
@@ -273,21 +351,21 @@ function UpdateAttempter_CheckForUpdate {
   forced_omaha_url_=
 
   if [ "$(UpdateAttempter_IsAnyUpdateSourceAllowed)" == "true" ]; then
-    forced_app_version_="$app_version"
-    forced_omaha_url_="$omaha_url"
+    forced_app_version_=$app_version
+    forced_omaha_url_=$omaha_url
   fi
   
   if [ "${omaha_url}" == "${kScheduledAUTestURLRequest}" ]; then
-    forced_omaha_url_="${kOmahaDefaultAUTestURL}"
+    forced_omaha_url_=${kOmahaDefaultAUTestURL}
     interactive=0
   elif [ "${omaha_url}" == "${kAUTestURLRequest}" ]; then
-    forced_omaha_url_="${kOmahaDefaultAUTestURL}"
+    forced_omaha_url_=${kOmahaDefaultAUTestURL}
   fi
   
   if [ $interactive -eq 1 ]; then
     current_update_attempt_flags_="$flags"
   fi
-  
+
   # No need for forced_update_pending_callback_ or UpdateAttempter::ScheduleUpdates() or UpdateManager
   # since we're checking for update immediately
   UpdateAttempter_OnUpdateScheduled

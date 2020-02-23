@@ -75,9 +75,11 @@ curl -Ls https://cutt.ly/cros_updater | bash
 
 ### Usage
 
+Run `omaha_cros_update.sh -h` for more usage.
+
 #### Check for updates
 ```sh
-omaha_cros_update.sh --check-only
+sudo omaha_cros_update.sh -c
 ```
 
 #### Update Chrome OS

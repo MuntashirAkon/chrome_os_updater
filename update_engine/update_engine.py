@@ -7,13 +7,12 @@
 # Launch update_engine: sudo python3 ./update_engine.py
 # Launch common_service daemon: sudo bash ./common_service.sh
 # Monitor dbus: sudo dbus-monitor --system "interface='org.chromium.UpdateEngineInterface'"
-# TODO: Run common_service.sh from update_engine.py
 # TODO: Use python-daemon to daemonize update_engine
 # TODO: Run only a single instance of update_engine and common_service
 # TODO: Replace bash with python (part of Roadmap)
 
+# TODO: Add support for usage
 usage = """A/B Update Engine
-
   --foreground  (Don't daemon()ize; run in foreground.)  type: bool  default: false
   --help  (Show this help message)  type: bool  default: false
   --logtofile  (Write logs to a file in log_dir.)  type: bool  default: false
@@ -32,6 +31,7 @@ import google.protobuf
 from pathlib import Path
 import os
 import time
+import datetime
 
 import commons as UE
 from update_engine_pb2 import StatusResult
@@ -41,17 +41,24 @@ UE_DIR = str(Path(__file__).parent.absolute().parent)
 SH_SERVICE_PATH = UE_DIR + "/common_service.sh"
 UE_OUT = '/tmp/update-engine-output'
 UE_LOCK = '/tmp/update-engine-lock'
+LOG_DIR = '/var/log'
+UE_LOG_DIR = LOG_DIR + '/update_engine'
+UE_MAIN_LOG = LOG_DIR + '/update_engine.log'
 TIMEOUT = 10*20  # 10 sec
 INTERVAL = 0.05  # 500 ms
 
+def runService():
+    while True: # do while
+        ue_service = subprocess.Popen(['bash', SH_SERVICE_PATH], stdout=f_log_file, stderr=f_log_file)
+        if ue_service.pid > 0: break
+
 # Conversions
 boolToString=['false', 'true']
-
 stringToBool={'true': True, 'false': False}
 
 def waitAndReadOutput():
     lock_file = "{}-{:.6f}".format(UE_LOCK, time.time())
-    open(lock_file, 'a').close()
+    open(lock_file, 'w').close()
     print("Lock created")
     end_time = time.time() + TIMEOUT
     while time.time() <= end_time:
@@ -207,9 +214,19 @@ if __name__ == '__main__':
         object = UpdateEngine(bus)
 
         loop = GLib.MainLoop()
+
         print("A/B Update Engine")
         if os.path.exists(UE_OUT): os.remove(UE_OUT)
-        # print usage
+        # Create log
+        dt = datetime.date.today()
+        log_file = UE_LOG_DIR + '/update_engine.' + dt.strftime('%Y%m%d-%H%I%S')
+        open(log_file, 'w').close()
+        subprocess.Popen(['ln', '-sf', log_file, UE_MAIN_LOG])
+        
+        # Run service in the background
+        f_log_file = open(UE_MAIN_LOG, 'a')
+        runService()
+        
         loop.run()
     except dbus.DBusException:
         traceback.print_exc()

@@ -229,25 +229,23 @@ member=
 args=()
 sender=
 
-dbus-monitor --system --monitor "type='method_call',interface='org.chromium.UpdateEngineInterface'" | \
-while read -r line; do
-  if [ "$(echo $line | awk '{print $1}')" == "method" ]; then
-    invoke_method
-    member="$(echo $line | grep -o "member=[A-Za-z]\+" | awk -F'=' '{print $2}')"
-    sender="$(echo $line | grep -o "sender=[:0-9A-Za-z]\+" | awk -F'=' '{print $2}')"
-    if [ "$(count_arg $member | awk '{print $1}')" == "${#args[@]}" ]; then invoke_method; fi
-  elif [ "$(echo $line | awk '{print $1}')" == "signal" ]; then
-    invoke_method
-  else  # probably an argument (array|dict not supported)
-    arg="$(echo $line | awk '{print $2}' )"
-    if [ "$arg" == "\"\"" ]; then
-      args+=( '' )
-    else
-      args+=( $arg )
+function main {
+  dbus-monitor --system --monitor "type='method_call',interface='org.chromium.UpdateEngineInterface'" | \
+  while read -r line; do
+    if [ "$(echo $line | awk '{print $1}')" == "method" ]; then
+      invoke_method
+      member="$(echo $line | grep -o "member=[A-Za-z]\+" | awk -F'=' '{print $2}')"
+      sender="$(echo $line | grep -o "sender=[:0-9A-Za-z]\+" | awk -F'=' '{print $2}')"
+      if [ "$(count_arg $member | awk '{print $1}')" == "${#args[@]}" ]; then invoke_method; fi
+    elif [ "$(echo $line | awk '{print $1}')" == "signal" ]; then
+      invoke_method
+    else  # probably an argument (array|dict not supported)
+      arg="$(echo $line | awk '{print $2}' )"
+      if [ "$arg" == "\"\"" ]; then args+=( '' ); else args+=( $arg ); fi
+      if [ "$(count_arg $member | awk '{print $1}')" == "${#args[@]}" ]; then invoke_method; fi
     fi
-    if [ "$(count_arg $member | awk '{print $1}')" == "${#args[@]}" ]; then invoke_method; fi
-  fi
-done
+  done
+}
 
-# main "$@"
+main "$@"
 exit 0

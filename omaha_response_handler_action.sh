@@ -3,12 +3,12 @@
 # This file is converted from the original omaha_response_handler_action.cc
 # located at https://chromium.googlesource.com/chromiumos/platform/update_engine/+/refs/heads/master/omaha_response_handler_action.cc
 # fetched at 30 Jun 2019
-# NOTE: The conversion is a gradual process, it may take some time
 
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 . "$SCRIPT_DIR/omaha_request_action.sh"
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
 
 kDeadlineFile="/tmp/update-check-response-deadline"
 kCrosUpdateConf="/usr/local/cros_update.conf" # Our conf file
@@ -75,7 +75,7 @@ function GetPartitionFromUUID {
 function OmahaResponseHandlerAction_PerformAction {
     if ! [ ${ORA_update_exists} ]; then
       echo_stderr "There are no updates. Aborting."
-      exit 1
+      return 1
     fi
     # PayloadState::GetCurrentURL is not necessary right now.
     # We're only going to use the first item
@@ -120,7 +120,7 @@ function OmahaResponseHandlerAction_PerformAction {
       install_plan['target_slot']=${root_a}
     else
       echo_stderr "No valid target partition is found. Update aborted."
-      exit 1
+      return 1
     fi
     install_plan['efi_slot']=$(GetPartitionFromUUID "${EFI}" 'EFI-SYSTEM')
     if [ -n "${TPM}" ]; then
@@ -135,6 +135,7 @@ function OmahaResponseHandlerAction_PerformAction {
     install_plan['update_file_path']=  # Update file path/location
     install_plan['tpm_url']="https://github.com/imperador/chromefy/raw/master/swtpm.tar"
     install_plan['target_partition']=  # Target partition path
+    return 0
 }
 
 

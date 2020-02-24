@@ -8,6 +8,8 @@
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
+
 # Don't ever break the sequence!
 . "${SCRIPT_DIR}/update_status.py"
 . "${SCRIPT_DIR}/image_properties.sh"
@@ -211,7 +213,8 @@ function UpdateAttempter_CalculateUpdateParams {
 
 #
 # UpdateAttempter::BuildUpdateActions
-#
+# FIXME: This method is not properly implemented yet
+# TODO: replace `return 1` with status messages
 function UpdateAttempter_BuildUpdateActions {
   # TODO: processor_->IsRunning()
   # Check for update and apply if available
@@ -219,7 +222,7 @@ function UpdateAttempter_BuildUpdateActions {
   . "$SCRIPT_DIR/omaha_response_handler_action.sh"
   . "$SCRIPT_DIR/download_action.sh"
   . "$SCRIPT_DIR/delta_performer.sh"
-  OmahaRequestAction_TransferComplete
+  OmahaRequestAction_TransferComplete || return 1
 
   # Send signal: UPDATE_AVAILABLE?
   if [ ${ORA_update_exists} ]; then
@@ -236,12 +239,12 @@ function UpdateAttempter_BuildUpdateActions {
     echo $(UpdateStatusToString $status)
     return 1
   fi
-  
+
   if ! $is_install; then
     return 0
   fi
 
-  OmahaResponseHandlerAction_PerformAction
+  OmahaResponseHandlerAction_PerformAction || return 1
   # TODO: Run checks
 
   # Send signal: DOWNLOADING
@@ -250,7 +253,7 @@ function UpdateAttempter_BuildUpdateActions {
   BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
   echo $(UpdateStatusToString $status)
 
-  DownloadAction_PerformAction
+  DownloadAction_PerformAction || return 1
   # TODO: Check if the update is downloaded properly
 
   # Send signal: VERIFYING
@@ -259,7 +262,7 @@ function UpdateAttempter_BuildUpdateActions {
   BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
   echo $(UpdateStatusToString $status)
 
-  DownloadAction_TransferComplete
+  DownloadAction_TransferComplete || return 1
   # TODO: Check if the verification is completed properly
 
   # Send signal: FINALIZING
@@ -268,7 +271,7 @@ function UpdateAttempter_BuildUpdateActions {
   BroadcastStatus "$last_checked_time" "$progress" "$status" "$new_version" "$new_size_bytes" "$is_enterprise_rollback" "$is_install" "$eol_date"
   echo $(UpdateStatusToString $status)
   
-  PostinstallRunnerAction_PerformAction
+  PostinstallRunnerAction_PerformAction || return 1
 
   if [ ${PostinstallRunnerAction_update_complete} ]; then
     status_=${UPDATED_NEED_REBOOT}

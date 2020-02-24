@@ -7,12 +7,7 @@
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-#
-# Echo to stderr
-#
-function echo_stderr {
-  >&2 echo "$@"
-}
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
 
 kOsVersion="Indy"
 kChannelsByStability=(

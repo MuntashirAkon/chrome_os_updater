@@ -5,22 +5,14 @@
 # fetched at 23 December 2019
 # NOTE: The conversion is a gradual process, it may take some time
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-function debug {
-    if [ $CROS_DEBUG ]; then
-        echo "DEBUG: $@"
-    fi
-}
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
 
-function print_env {
-    if [ $CROS_DEBUG ]; then
-      # print environment variables
-      ( set -o posix ; set )
-    fi
-}
 
+# Don't delete the downloaded update file if
+# debug mode is enabled
 function delete_update_file {
     if ! [ $CROS_DEBUG ]; then
       rm "${install_plan['update_file_path']}"
@@ -38,6 +30,7 @@ function DeltaPerformer_Close {
     rm "${install_plan['root_path']}" 2> /dev/null
     rmdir "${install_plan['root_mountpoint']}"
     # rmdir "${install_plan['target_partition']}"
+    return 0
 }
 
 #
@@ -53,10 +46,9 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to extract root image from update."
       delete_update_file
-      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
-      exit 1
+      return 1
     fi
     # mount root.img
     mkdir "${install_plan['root_mountpoint']}"
@@ -64,22 +56,20 @@ function DeltaPerformer_PreparePartitionsForUpdate {
     if [ $? -ne 0 ]; then
       echo_stderr "Failed to mount root image."
       delete_update_file
-      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"
-      exit 1
+      return 1
     fi
     # mount target partition
     if [ -z "${install_plan['target_slot']}" ]; then
         echo_stderr "Target slot is empty!"
         umount "${install_plan['root_mountpoint']}"
         delete_update_file
-        print_env
         rm "${install_plan['kernel_path']}" 2> /dev/null
         rm "${install_plan['root_path']}" 2> /dev/null
         rmdir "${install_plan['root_mountpoint']}"
-        exit 1
+        return 1
     fi
     mkdir "${install_plan['target_partition']}"
     mount -t ext4 -o rw,exec "${install_plan['target_slot']}" "${install_plan['target_partition']}"
@@ -92,13 +82,13 @@ function DeltaPerformer_PreparePartitionsForUpdate {
       echo_stderr "Failed to mount target partition."
       umount "${install_plan['root_mountpoint']}"
       delete_update_file
-      print_env
       rm "${install_plan['kernel_path']}" 2> /dev/null
       rm "${install_plan['root_path']}" 2> /dev/null
       rmdir "${install_plan['root_mountpoint']}"
       rmdir "${install_plan['target_partition']}"
-      exit 1
+      return 1
     fi
+    return 0
 }
 
 #
@@ -106,7 +96,7 @@ function DeltaPerformer_PreparePartitionsForUpdate {
 #
 function DeltaPerformer_Write {
     echo_stderr "Updating Chrome OS..."
-    DeltaPerformer_PreparePartitionsForUpdate
+    DeltaPerformer_PreparePartitionsForUpdate || return 1
     # TODO: Do some error checking
     # Copy update files
     # Copy contents of root.img to the target partition
@@ -136,7 +126,7 @@ function DeltaPerformer_Write {
     # FIXME: Check for errors, use && for related commands to check at last and exit
     # Copy mount-internals.conf if present
     cp -a {,"${install_plan['target_partition']}"}/etc/init/mount-internals.conf 2> /dev/null
-    DeltaPerformer_Close
+    DeltaPerformer_Close || return 1
 }
 
 # Check environment variables

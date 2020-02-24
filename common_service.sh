@@ -3,21 +3,10 @@
 # Taken from https://chromium.googlesource.com/aosp/platform/system/update_engine/+/a1f4a7dcaa921fcb0ab395214a9558a62ca083f2/common_service.h
 # Combined with https://chromium.googlesource.com/aosp/platform/system/update_engine/+/a1f4a7dcaa921fcb0ab395214a9558a62ca083f2/dbus_service.cc
 #
-# Dependency: system_state.h (update_attempter, device_policy, prefs_interface, ConnectionManagerInterface, ClockInterface, BootControlInterface)
+# Dependency: system_state.h (device_policy, ConnectionManagerInterface, ClockInterface)
 
 # update_engine.py calls this to get information
 # DO NOT call it yourself as it may be unstable
-
-# IN: As argument <method> <method args...>
-# OUT: As echo (stdout)
-
-#
-# TODO: Demonize this instead of using a python-based update_engine
-#
-# Roadmap
-# - Run this forever
-# - use update_engine.py for monitoring dbus
-# - Execute commands if got any
 
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
@@ -27,8 +16,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 UE_OUT='/tmp/update-engine-output'
 UE_LOCK='/tmp/update-engine-lock'
 
+# Most of these are initialized in real_system_state.cc
 BootControlChromeOS_Init
-UpdateAttempter_Init
+UpdateAttempter_Init  # Prefs_Init, OmahaRequestParams_Init
+
 
 function AttemptUpdate { # in_app_version, in_omaha_url
   AttemptUpdateWithFlags "$1" "$2"

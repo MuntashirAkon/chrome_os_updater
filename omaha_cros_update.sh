@@ -4,6 +4,8 @@
 # Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
+
 #
 # Echo to stderr
 #
@@ -31,7 +33,7 @@ function main {
         . "$SCRIPT_DIR/omaha_request_params.sh"
         . "$SCRIPT_DIR/omaha_request_action.sh"
         OmahaRequestParams_Init
-        OmahaRequestAction_TransferComplete
+        OmahaRequestAction_TransferComplete || ( print_env && exit 1 )
         if [ ${ORA_update_exists} ]; then
           echo_stderr "A new update is available!"
           echo_stderr "Version: ${ORA_version}"
@@ -57,11 +59,11 @@ function main {
         . "$SCRIPT_DIR/omaha_request_params.sh"
         . "$SCRIPT_DIR/postinstall_runner_action.sh"
         OmahaRequestParams_Init
-        OmahaRequestAction_TransferComplete
-        OmahaResponseHandlerAction_PerformAction
-        DownloadAction_PerformAction
-        DownloadAction_TransferComplete
-        PostinstallRunnerAction_PerformAction
+        OmahaRequestAction_TransferComplete || ( print_env && exit 1 )
+        OmahaResponseHandlerAction_PerformAction || ( print_env && exit 1 )
+        DownloadAction_PerformAction || ( print_env && exit 1 )
+        DownloadAction_TransferComplete || ( print_env && exit 1 )
+        PostinstallRunnerAction_PerformAction || ( print_env && exit 1 )
         exit 0
         ;;
       *)

@@ -1,9 +1,12 @@
 #!/bin/bash
 # 2019 (c) Muntashir Al-Islam. All rights reserved.
 
-# Get script directory 
+# Get script directory
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+[ command -v debug >/dev/null 2>&1 ] || source "${SCRIPT_DIR}/debug_utils.sh"
+
+#
 # UpdateBootloaders, similar to update_x86_bootloaders.sh
 # located at https://chromium.googlesource.com/chromiumos/platform/crosutils/+/refs/heads/master/update_bootloaders.sh
 # The content of grub.cfg should have the format as given in
@@ -21,22 +24,27 @@ function UpdateBootloaders {
     local root_a_part="$3"
     local root_b_part="$4"
     local efi_part="$5"
+    # Check if root is really mountable
+    if ! [ -w "${root}" ]; then
+      >&2 echo "${root} is a read only path."
+    fi
     # Sometimes, /boot and /boot/vmlinuz doesn't exist
     if [ ! -f "${root}/boot/vmlinuz" ]; then
       >&2 echo "${root}/boot or ${root}/boot/vmlinuz not found."
-      exit 1
+      return 1
     fi
     # Although documented, check if $efi_path is actually a mount point
     if ! mountpoint -q "$efi_path"; then
       >&2 echo "$efi_path is not a mountpoint."
-      exit 1
+      return 1
     fi
+    debug "UpdateBootloaders: $@"
     ### For EFI ###
     local grub_cfg_path="${root}/boot/efi/boot/grub.cfg"
     . "${root}/usr/sbin/write_gpt.sh"
     load_base_vars
     local root_dev=`rootdev -s -d 2>/dev/null`
-    # Check if both kernels are exists
+    # Check if both kernels exist
     local kern_a_part=$PARTITION_NUM_KERN_A
     local kern_b_part=$PARTITION_NUM_KERN_B
     if ! ( [ $kern_a_part ] && [ $kern_b_part ] ); then
@@ -67,7 +75,7 @@ function UpdateBootloaders {
     sed -i "s|${root_b_val}|${root_b_uuid}|" "${grub_cfg_path}"
     # Replace first one with new value of ROOT-A
     sed -i "0,/${root_b_uuid}/s|${root_b_uuid}|${root_a_uuid}|" "${grub_cfg_path}"
-    ### For Syslinux ###
+    ### For Syslinux (Legacy) ###
     # Get current (now old) values
     local syslinux_path="${root}/boot/syslinux"
     local root_a_path="${syslinux_path}/root.A.cfg"
@@ -87,7 +95,13 @@ function UpdateBootloaders {
     #umount "${efi_path}"
     #syslinux -d /syslinux "${efi_part}"
     #mount "${efi_part}" "${efi_path}"
+    debug "grub.cfg: $(cat "${efi_path}"/efi/boot/grub.cfg)"
+    return 0
 }
 
 
-UpdateBootloaders "$@"
+# Run the script independently if called that way
+if [ "${0##*/}" == "update_bootloaders.sh" ]; then
+  UpdateBootloaders "$@" || ( >&2 echo "Updating bootloaders failed." && exit 1 )
+  exit 0
+fi

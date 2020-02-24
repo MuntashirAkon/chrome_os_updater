@@ -37,7 +37,7 @@ import commons as UE
 from update_engine_pb2 import StatusResult
 
 # Constants
-UE_DIR = str(Path(__file__).parent.absolute().parent)
+UE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SH_SERVICE_PATH = UE_DIR + "/common_service.sh"
 UE_OUT = '/tmp/update-engine-output'
 UE_LOCK = '/tmp/update-engine-lock'
@@ -47,6 +47,7 @@ UE_MAIN_LOG = LOG_DIR + '/update_engine.log'
 TIMEOUT = 10*20  # 10 sec
 INTERVAL = 0.05  # 500 ms
 
+
 def runService():
     while True: # do while
         ue_service = subprocess.Popen(['bash', SH_SERVICE_PATH], stdout=f_log_file, stderr=f_log_file)
@@ -55,6 +56,7 @@ def runService():
 # Conversions
 boolToString=['false', 'true']
 stringToBool={'true': True, 'false': False}
+
 
 def waitAndReadOutput():
     lock_file = "{}-{:.6f}".format(UE_LOCK, time.time())

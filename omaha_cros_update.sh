@@ -33,7 +33,7 @@ function main {
         . "$SCRIPT_DIR/omaha_request_params.sh"
         . "$SCRIPT_DIR/omaha_request_action.sh"
         OmahaRequestParams_Init
-        OmahaRequestAction_TransferComplete || ( print_env && exit 1 )
+        OmahaRequestAction_TransferComplete || print_env && exit 1
         if [ ${ORA_update_exists} ]; then
           echo_stderr "A new update is available!"
           echo_stderr "Version: ${ORA_version}"
@@ -57,13 +57,14 @@ function main {
         fi
         . "${SCRIPT_DIR}/image_properties.sh"
         . "$SCRIPT_DIR/omaha_request_params.sh"
+        . "$SCRIPT_DIR/omaha_request_action.sh"
         . "$SCRIPT_DIR/postinstall_runner_action.sh"
         OmahaRequestParams_Init
-        OmahaRequestAction_TransferComplete || ( print_env && exit 1 )
-        OmahaResponseHandlerAction_PerformAction || ( print_env && exit 1 )
-        DownloadAction_PerformAction || ( print_env && exit 1 )
-        DownloadAction_TransferComplete || ( print_env && exit 1 )
-        PostinstallRunnerAction_PerformAction || ( print_env && exit 1 )
+        OmahaRequestAction_TransferComplete || print_env && exit 1
+        OmahaResponseHandlerAction_PerformAction || print_env && exit 1
+        DownloadAction_PerformAction || print_env && exit 1
+        DownloadAction_TransferComplete || print_env && exit 1
+        PostinstallRunnerAction_PerformAction || print_env && exit 1
         exit 0
         ;;
       *)

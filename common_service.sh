@@ -221,6 +221,8 @@ args=()
 sender=
 
 function main {
+  while [ -e $UE_LOCK ]; do touch $UE_OUT; sleep 0.5; done
+  
   dbus-monitor --system --monitor "type='method_call',interface='org.chromium.UpdateEngineInterface'" | \
   while read -r line; do
     if [ "$(echo $line | awk '{print $1}')" == "method" ]; then

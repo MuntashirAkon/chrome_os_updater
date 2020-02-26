@@ -37,7 +37,7 @@ if ! [ -x "${pip}" ]; then
     exit 1
 fi
 # Install protobuf, PyGObject, dbus-python
-"${pip}" install protobuf PyGObject dbus-python
+"${pip}" install protobuf PyGObject dbus-python python-daemon
 if [ $? -ne 0 ]; then
     echo "Failed to install python module(s)!"
     exit 1

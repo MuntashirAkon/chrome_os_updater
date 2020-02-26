@@ -26,16 +26,16 @@ function UpdateBootloaders {
     local efi_part="$5"
     # Check if root is really mountable
     if ! [ -w "${root}" ]; then
-      >&2 echo "${root} is a read only path."
+      echo_stderr "${root} is a read only path."
     fi
     # Sometimes, /boot and /boot/vmlinuz doesn't exist
     if [ ! -f "${root}/boot/vmlinuz" ]; then
-      >&2 echo "${root}/boot or ${root}/boot/vmlinuz not found."
+      echo_stderr "${root}/boot or ${root}/boot/vmlinuz not found."
       return 1
     fi
     # Although documented, check if $efi_path is actually a mount point
     if ! mountpoint -q "$efi_path"; then
-      >&2 echo "$efi_path is not a mountpoint."
+      echo_stderr "$efi_path is not a mountpoint."
       return 1
     fi
     debug "UpdateBootloaders: $@"
@@ -102,6 +102,6 @@ function UpdateBootloaders {
 
 # Run the script independently if called that way
 if [ "${0##*/}" == "update_bootloaders.sh" ]; then
-  UpdateBootloaders "$@" || ( >&2 echo "Updating bootloaders failed." && exit 1 )
+  UpdateBootloaders "$@" || echo_stderr "Updating bootloaders failed." && exit 1
   exit 0
 fi

@@ -64,13 +64,13 @@ Save this configuration file as `cros_update.conf` to `/usr/local` (full URI is 
 Open crosh shell by pressing `Ctrl` + `Alt` + `T` and the type `shell`. Now copy and paste the command below (don't use `sudo`!):
 
 ```sh
-curl -Ls https://raw.githubusercontent.com/MuntashirAkon/chrome_os_updater/master/installer.sh | bash
+curl -Ls https://github.com/MuntashirAkon/chrome_os_updater/releases/latest/download/installer.sh | bash
 ```
 
 or, an easy to remember command:
 
 ```sh
-curl -Ls https://cutt.ly/cros_updater | bash
+curl -Ls https://bit.ly/cros_updater | bash
 ```
 
 ### Usage
